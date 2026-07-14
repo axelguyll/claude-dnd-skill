@@ -79,9 +79,10 @@ def validate_bible(bible: dict, monsters: list[dict]) -> list[str]:
             errors.append(f"beat {bid}: secret key required (prose or null)")
         elif not (b["secret"] is None or isinstance(b["secret"], str)):
             errors.append(f"beat {bid}: secret must be prose or null")
-        if b.get("status") not in _STATUSES:
+        status = b.get("status")
+        if not (isinstance(status, str) and status in _STATUSES):
             errors.append(
-                f"beat {bid}: status {b.get('status')!r} must be one of "
+                f"beat {bid}: status {status!r} must be one of "
                 f"{sorted(_STATUSES)}"
             )
         gear = b.get("gear", [])

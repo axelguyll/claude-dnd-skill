@@ -139,6 +139,12 @@ class ValidateBibleTests(unittest.TestCase):
         errs = schema.validate_bible(_bible(beats), self.monsters)
         self.assertTrue(any("status" in e for e in errs))
 
+    def test_unhashable_status_returns_error_not_crash(self):
+        beats = _valid_beats()
+        beats[0]["status"] = ["pending"]  # list, unhashable — must not crash
+        errs = schema.validate_bible(_bible(beats), self.monsters)  # must not raise
+        self.assertTrue(any("status" in e for e in errs))
+
 
 if __name__ == "__main__":
     unittest.main()
