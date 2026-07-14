@@ -30,6 +30,10 @@ class SkillProseTests(unittest.TestCase):
     def test_deed_cite_rule_present(self):
         self.assertIn("cite a deed", CMDS)
 
+    def test_level_up_gate_reconciled_for_milestone(self):
+        # milestone campaigns must bypass the /dm:dnd level up XP gate
+        self.assertIn("Milestone campaigns bypass this gate", CMDS)
+
 
 if __name__ == "__main__":
     unittest.main()

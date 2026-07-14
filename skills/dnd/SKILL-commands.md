@@ -633,6 +633,8 @@ Read `characters/<name>.md`, display cleanly. If name omitted and one character 
    |    |         | 20 | 355,000 |
 
    Insufficient XP → report deficit and stop. Only continue on explicit DM override.
+
+   **Milestone campaigns bypass this gate.** If the party sheet carries a `⚠ LEVEL UP PENDING (Level N)` marker (set by `/dm:dnd beat complete` via `prep/milestone.py`, with no XP counter in play), skip the XP-threshold check entirely and level to N — the pending marker **is** the authorization. See `## Milestone Leveling` in SKILL.md.
 2. Read sheet. Run `character.py levelup`. Apply class features. Ask for HP roll or average. Update sheet + global roster. Narrate the growth.
 
    **Ruleset-aware subclass timing (added 2026-05-08):** read campaign ruleset via `paths.campaign_ruleset(<campaign>)`.
