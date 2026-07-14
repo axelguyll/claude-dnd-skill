@@ -418,7 +418,9 @@ Advance the spine when the host signals the current beat is done.
    beat `status: current` (if any).
 2. **Sync state.md.** In `state.md → ## Campaign Arc`: set `current_beat` to the next beat's
    id, sync `beats[].status`, drop the completed id from `outstanding_beats`, regenerate
-   `steering_notes`. Final beat → leave `current_beat` unset.
+   `steering_notes`. Final beat → set `current_beat: null` and append a one-line completion
+   note (arc name, date, closing beat id) to the existing `## Arc History` section of
+   state.md.
 3. **Milestone leveling.** If `level_up_to` is non-null, per party sheet: mark pending with
    `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/milestone.py --sheet <sheet> --level <level_up_to>`,
    then run `/dm:dnd level up` **once per level** to `level_up_to` (spine may jump >1 level,
@@ -476,7 +478,7 @@ session-log.md keeps only the **2 most recent full session entries**. Older entr
 - Restated NPC profiles (job title, age, location) that already live as node tags + summary
 
 **Keep** in archive bullets:
-- Mechanical changes (XP awarded, level-ups, items gained/spent, slots burned, HP deltas at session end)
+- Mechanical changes (beat advanced / milestone level-ups, items gained/spent, slots burned, HP deltas at session end)
 - Plot beats (arc beat completions, "Beat 2a sealed", "Beat 2b LANDED")
 - Atmospheric / decision moments that have no graph edge ("Mira ate the bread — first food in 800 years", "Mara squeezed her hand")
 - Disclosed content (the WHAT was learned — "fragment / anchor / host", "three acceleration factors") even when the relational fact is in graph

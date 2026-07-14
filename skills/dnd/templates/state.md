@@ -165,7 +165,7 @@ revision_log: []
 #     label: "<from spine>"
 #     what_changes: "<from spine>"
 #     world_pressure: "<from spine>"
-#     status: current          # current | complete | skipped
+#     status: current          # pending | current | complete | skipped
 # steering_notes: >
 #   <How to apply world_pressure toward beat <current_beat> without forcing it.
 #    Regenerated at each beat advance.>

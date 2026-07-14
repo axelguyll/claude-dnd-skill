@@ -38,12 +38,14 @@ class SkillProseTests(unittest.TestCase):
     def test_beat_complete_handles_multi_level_jump(self):
         # milestone jumps can span >1 level (e.g. 4 -> 6); the procedure must loop
         idx = CMDS.find("/dm:dnd beat complete")
-        section = CMDS[idx: idx + 900]
+        end = CMDS.find("## `/dm:dnd save", idx)
+        section = CMDS[idx:end]
         self.assertIn("once per level", section)
 
     def test_beat_complete_clears_pending_marker(self):
         idx = CMDS.find("/dm:dnd beat complete")
-        section = CMDS[idx: idx + 900]
+        end = CMDS.find("## `/dm:dnd save", idx)
+        section = CMDS[idx:end]
         self.assertIn("--clear", section)
 
     def test_combat_end_awards_no_xp(self):

@@ -20,9 +20,8 @@
 ### Decisions Made
 -
 
-### XP Awarded
-- Total this session:
-- Running total:
+### Milestone Progress
+- Beat(s) advanced this session:
 
 ### Loot & Changes
 -
