@@ -78,14 +78,21 @@ def validate_bible(bible: dict, monsters: list[dict]) -> list[str]:
             errors.append(f"beat {bid}: secret key required (prose or null)")
         elif not (b["secret"] is None or isinstance(b["secret"], str)):
             errors.append(f"beat {bid}: secret must be prose or null")
-        for g in b.get("gear", []):
-            if not (isinstance(g, str) and g.strip()):
-                errors.append(f"beat {bid}: gear entries must be non-empty strings")
+        gear = b.get("gear", [])
+        if not isinstance(gear, list):
+            errors.append(f"beat {bid}: gear must be a list")
+        else:
+            for g in gear:
+                if not (isinstance(g, str) and g.strip()):
+                    errors.append(f"beat {bid}: gear entries must be non-empty strings")
+        threats = b.get("threats", [])
+        if not isinstance(threats, list):
+            errors.append(f"beat {bid}: threats must be a list")
 
     # threats: known name + in band for that beat's party level
     levels = party_levels(beats)
     for b, lvl in zip(beats, levels):
-        for name in b.get("threats", []):
+        for name in (b.get("threats") if isinstance(b.get("threats"), list) else []):
             mon = bestiary.find_monster(name, monsters)
             if mon is None:
                 errors.append(f"beat {b.get('id')}: unknown monster {name!r}")

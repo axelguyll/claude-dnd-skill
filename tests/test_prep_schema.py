@@ -115,6 +115,18 @@ class ValidateBibleTests(unittest.TestCase):
         errs = schema.validate_bible(_bible(beats), self.monsters)  # must not raise
         self.assertTrue(any("level_up_to" in e for e in errs))
 
+    def test_gear_as_bare_string_flagged(self):
+        beats = _valid_beats()
+        beats[0]["gear"] = "torch"  # bare string, not a list
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("gear must be a list" in e for e in errs))
+
+    def test_threats_as_bare_string_flagged(self):
+        beats = _valid_beats()
+        beats[0]["threats"] = "Goblin"  # bare string, not a list
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("threats must be a list" in e for e in errs))
+
 
 if __name__ == "__main__":
     unittest.main()
