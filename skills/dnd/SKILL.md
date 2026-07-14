@@ -51,9 +51,9 @@ When the ruleset is `2014` and a player asks about a 2024-only feature, acknowle
 When the skill is invoked **without a clear action** — a bare `/dm:dnd`, or a vague opener like *"let's play D&D"* with no subcommand and no campaign named — **call the `AskUserQuestion` tool** to find out what they want before doing anything else:
 
 > **Question:** "What would you like to do?"
-> **Options:** `Load a campaign` · `Start a new campaign` · `Import a campaign` · `Manage a character`
+> **Options:** `Load a campaign` · `Start a new campaign` · `Import a campaign` · `Prep a campaign` · `Manage a character`
 
-Then branch to the matching procedure in `SKILL-commands.md` (`/dm:dnd load`, `/dm:dnd new`, `/dm:dnd import`, `/dm:dnd character …`).
+Then branch to the matching procedure in `SKILL-commands.md` (`/dm:dnd load`, `/dm:dnd new`, `/dm:dnd import`, `/dm:dnd prep`, `/dm:dnd character …`).
 
 **Skip the menu when the intent is already explicit.** If the player typed a subcommand (`/dm:dnd load`, `/dm:dnd new …`) or named a campaign (`/dm:dnd load the-iron-vault`, *"load my pirate campaign"*), go straight to that procedure — do not ask. The menu is for the empty/ambiguous case only; never make a player who already told you what they want pick it from a list.
 
@@ -399,73 +399,17 @@ Step (g) uses `push_stats.py --turn-current` directly because it has no narratio
 
 ---
 
-## XP Awards
+## Milestone Leveling
 
-**Never calculate XP in context.** Use `scripts/xp.py` — it holds all tables and handles character file updates and display pushes. The DM's only decision is the difficulty tier and encounter type.
+**This campaign levels on story milestones, not XP.** There is no XP counter and no
+`xp.py award` in the loop. The party levels when a **beat** completes and the spine's
+`level_up_to` for that beat is non-null.
 
-### When to award XP
-
-**Combat encounters** — award after every resolved combat that presented genuine challenge. Use `--type combat`.
-
-**Non-combat encounters** — award when all of the following are true:
-- The outcome was *uncertain* (failure was possible and would have mattered)
-- The party exercised meaningful agency (skill, roleplay, preparation, clever thinking)
-- The event advanced the story in a consequential way
-
-Qualifying non-combat categories and their typical difficulty:
-| Encounter | Typical tier |
-|-----------|-------------|
-| Major social challenge (interrogation, high-stakes deception, negotiation) | Medium–Hard |
-| Investigation/mystery resolution (piecing together a complex plot, identifying a hidden threat) | Easy–Medium |
-| Ritual or arcane task completion (Speak with Dead, dangerous ritual, significant spell use with uncertain outcome) | Easy–Medium |
-| Milestone discovery (unmasking an enemy, confirming a threat, obtaining key evidence) | Easy–Medium |
-| Harrowing escape, stealth infiltration, or survival challenge with meaningful failure risk | Medium–Hard |
-
-Do NOT award XP for: routine travel, trivial conversations, automatic skill checks, rest, shopping, or anything the party could not plausibly have failed.
-
-### Difficulty rating guide
-
-Both tables use the same scale. Rate the encounter *as it was experienced*, not as designed.
-
-| Tier | Feel |
-|------|------|
-| **Easy** | Manageable challenge; resources barely taxed; outcome rarely in doubt |
-| **Medium** | Moderate pressure; one or two resources spent; outcome uncertain |
-| **Hard** | Significant pressure; multiple resources spent; failure was genuinely possible |
-| **Deadly** | Survival threatened; meaningful chance of PC death or catastrophic failure |
-
-### Script call pattern
-
-```bash
-CAMP=<campaign-name>
-
-# After combat (exact CR calculation — preferred):
-python3 ${CLAUDE_SKILL_DIR}/scripts/xp.py award \
-  --campaign $CAMP --characters "Max of Thraxx,Ethros the 19th" \
-  --monsters "goblin:1/4:3,hobgoblin:1:1" --note "description"
-
-# After combat (difficulty-rated — use when monster CRs are unavailable):
-python3 ${CLAUDE_SKILL_DIR}/scripts/xp.py award \
-  --campaign $CAMP --characters "Max of Thraxx,Ethros the 19th" --difficulty hard --type combat
-
-# After qualifying non-combat encounter:
-python3 ${CLAUDE_SKILL_DIR}/scripts/xp.py award \
-  --campaign $CAMP --characters "Max of Thraxx,Ethros the 19th" --difficulty medium --type noncombat \
-  --note "brief description"
-
-# Preview before awarding:
-python3 ${CLAUDE_SKILL_DIR}/scripts/xp.py calc --level 3 --players 2 --difficulty hard
-```
-
-Award XP at the **end of the scene** when the outcome is clear — not mid-combat or mid-negotiation. If a session ends before XP is awarded, note it in the session log and award at the start of the next session before anything else.
-
-**After running `xp.py award`, immediately send an XP award block to the display:**
-```bash
-python3 ${CLAUDE_SKILL_DIR}/display/send.py --xp-award '{"names":["Max of Thraxx","Ethros the 19th"],"xp":250,"reason":"Watcher turned — double agent secured","total":"3250 / 6500"}'
-```
-This fires a green-bordered block in the companion feed showing each character's name, XP gained, the reason, and their new running total. Players see it in the companion immediately — no separate announcement needed in narration.
-
-**Inspiration:** award via `send.py --inspiration-award NAME`. This fires a gold glow block in the feed AND sets the sidebar badge. Spend via `send.py --inspiration-spend NAME`.
+- Do NOT run `scripts/xp.py award`. Ignore XP thresholds entirely.
+- On beat completion, follow `/dm:dnd beat complete` (SKILL-commands.md): it marks the
+  pending level-up from the beat's `level_up_to`, then runs the normal `/dm:dnd level up`
+  procedure to apply HP + features to reach that level.
+- If the beat's `level_up_to` is null, the party does not level on that beat.
 
 ---
 

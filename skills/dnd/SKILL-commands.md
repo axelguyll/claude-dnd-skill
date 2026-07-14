@@ -353,6 +353,41 @@ Campaign "<name>" created from <source title>.
 
 ---
 
+## `/dm:dnd prep [premise:"..."] [tone:grim|classic|lighthearted] [difficulty:easy|standard|deadly]`
+
+Generate the authored campaign **bible** before session one. Inputs: premise (optional —
+blank = surprise-me), tone, difficulty, and the imported party sheets.
+
+1. **World layer.** Fill `templates/world.md` (Factions with Goals/Methods/Resources/
+   Opposition/Secret/Current-activity/Attitude; Adventure Nodes as *situations, not plots*;
+   Three Truths per element). Write to the campaign's `world.md`.
+2. **Spine.** Choose a beat count (6–8), split across the fixed 3 acts. For each beat, get
+   the legal monster candidates:
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/bestiary.py --level <party-level-at-beat>`
+   Pick what is *dramatic* from the in-band list only. Author each beat per the schema in
+   `templates/spine.md`: situations-not-objectives, ≥3 hooks (rule of three), causal
+   first-domino chain, absolute `level_up_to` (monotonic, final non-null, arc ends ≈ L8),
+   `gear`, `threats` (exact MM names), `secret` (prose or null). Write the bible JSON.
+3. **Validate — hard gate.** `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/schema.py --bible <path>`
+   If it prints `INVALID`, fix every listed error and re-run. Never proceed on an invalid bible.
+4. **Map shopping list.** In a SEPARATE pass told "describe the look only, never why the
+   party goes there or what happens," fill `templates/map-list.md`. Bias to common,
+   acquirable archetypes.
+5. **Seal.** Tell the host: world.md / spine / state.md are sealed ("don't read your own
+   campaign"); the map shopping list is the one artifact they should read.
+
+## `/dm:dnd beat complete [<beat id>]`
+
+Advance the spine when the host signals the current beat is done.
+
+1. Mark the beat `status: complete` in the spine; set the next beat `current`.
+2. If the completed beat's `level_up_to` is non-null, for each party sheet run:
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/milestone.py --sheet <sheet> --level <level_up_to>`
+   then run the normal `/dm:dnd level up` procedure to apply HP + features. **No XP.**
+3. Apply the beat's `gear` to inventory. Narrate the growth.
+
+---
+
 ## `/dm:dnd save`
 Write session events to session-log.md, update state.md (location, active quests, party HP/resources, recent events), update any characters/*.md that changed. Mirror each updated character to global roster (`~/.claude/dnd/characters/<name>.md`).
 
@@ -368,6 +403,10 @@ If nothing changed in a category this session, leave it as-is. If a fact was wro
 **Structured (imported) campaigns — keep the arc window and arc.md in sync.** When a chapter advances this session: mark the completed chapter `status: complete` in `arc.md`, set the new chapter `status: current`, and update `state.md → ## Campaign Arc` so its `current_chapter`, `current_chapter_detail`, `next_chapter`, and `outstanding_beats` reflect the new window. The full tree stays in `arc.md`; `state.md` carries only the current + next chapter so the load stays light. If no chapter advanced, only update `outstanding_beats`/`steering_notes` inline in `state.md` — no need to touch `arc.md`. (Dynamic/sandbox campaigns have no `arc.md`; update the inline arc in `state.md` as before.)
 
 Then update `## Faction Moves` in state.md: for each active faction, answer *"what did they do while the party was occupied?"* One line per faction — even if nothing visible yet. Confirm what was written.
+
+**Deed rule:** never change a faction's stance without recording the cause. Every shift in
+**Faction stances** must **cite a deed** appended to the `## Deeds` ledger in state.md
+(`<beat> — <faction> — <what the party did> — <+/−/neutral>`).
 
 **Session tail archive:** `dnd-display-app.py` continuously writes `~/.claude/dnd/campaigns/<name>/session_tail.json` — campaign-specific path, atomic-write, skip-on-empty guarded (since 2026-05-01). At save time:
 
