@@ -29,7 +29,7 @@ def party_levels(beats: list[dict]) -> list[int]:
     for beat in beats:
         levels.append(current)
         target = beat.get("level_up_to")
-        if target is not None:
+        if isinstance(target, int) and not isinstance(target, bool):
             current = target
     return levels
 
@@ -60,10 +60,11 @@ def validate_bible(bible: dict, monsters: list[dict]) -> list[str]:
     # level_up_to chain
     non_null = [b.get("level_up_to") for b in beats if b.get("level_up_to") is not None]
     for v in non_null:
-        if not (isinstance(v, int) and 2 <= v <= 8):
+        if not (isinstance(v, int) and not isinstance(v, bool) and 2 <= v <= 8):
             errors.append(f"level_up_to {v!r} must be an int 2..8 or null")
-    if non_null != sorted(set(non_null)) or len(non_null) != len(set(non_null)):
-        errors.append("level_up_to values must be strictly increasing across beats")
+    if all(isinstance(v, int) and not isinstance(v, bool) for v in non_null):
+        if non_null != sorted(set(non_null)) or len(non_null) != len(set(non_null)):
+            errors.append("level_up_to values must be strictly increasing across beats")
     if beats and beats[-1].get("level_up_to") is None:
         errors.append("final beat level_up_to must not be null (the arc must end leveled)")
 

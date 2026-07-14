@@ -40,6 +40,11 @@ class SkillProseTests(unittest.TestCase):
         section = CMDS[idx: idx + 900]
         self.assertIn("once per level", section)
 
+    def test_beat_complete_clears_pending_marker(self):
+        idx = CMDS.find("/dm:dnd beat complete")
+        section = CMDS[idx: idx + 900]
+        self.assertIn("--clear", section)
+
 
 if __name__ == "__main__":
     unittest.main()

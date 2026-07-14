@@ -37,6 +37,16 @@ class MilestoneMarkerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             milestone.set_pending_level("# Sheet with no xp line\n", 3)
 
+    def test_clear_pending_removes_marker_preserving_xp(self):
+        marked = milestone.set_pending_level(SHEET, 3)
+        cleared = milestone.clear_pending(marked)
+        self.assertNotIn("LEVEL UP PENDING", cleared)
+        self.assertIn("**XP:** 0 / 900", cleared)  # numbers untouched
+
+    def test_clear_pending_noop_when_no_marker(self):
+        # clearing a sheet with no marker leaves it unchanged (no raise)
+        self.assertEqual(milestone.clear_pending(SHEET), SHEET)
+
 
 if __name__ == "__main__":
     unittest.main()

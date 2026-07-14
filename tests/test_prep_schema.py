@@ -109,6 +109,12 @@ class ValidateBibleTests(unittest.TestCase):
         errs = schema.validate_bible(_bible(beats), self.monsters)  # must not raise
         self.assertTrue(any("act values must be in" in e for e in errs))
 
+    def test_string_level_up_to_returns_error_not_crash(self):
+        beats = _valid_beats()
+        beats[0]["level_up_to"] = "3"  # string, not int
+        errs = schema.validate_bible(_bible(beats), self.monsters)  # must not raise
+        self.assertTrue(any("level_up_to" in e for e in errs))
+
 
 if __name__ == "__main__":
     unittest.main()

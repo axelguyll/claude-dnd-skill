@@ -389,6 +389,7 @@ Advance the spine when the host signals the current beat is done.
    level up to `level_up_to`, applying each intervening level's HP + features in order. The spine
    may jump more than one level (e.g. 4 → 6), and `character.py levelup` advances a single level
    per run, so a two-level jump means two level-up passes. **No XP.**
+   Once Level reaches `level_up_to`, clear the marker: `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/milestone.py --sheet <sheet> --clear`.
 3. Apply the beat's `gear` to inventory. Narrate the growth.
 
 ---

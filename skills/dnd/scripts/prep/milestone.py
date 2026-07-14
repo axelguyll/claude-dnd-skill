@@ -21,17 +21,35 @@ def set_pending_level(sheet_text: str, target_level: int) -> str:
     return _XP_LINE.sub(lambda m: m.group(1) + marker, sheet_text, count=1)
 
 
+def clear_pending(sheet_text: str) -> str:
+    """Remove a `⚠ LEVEL UP PENDING (Level N)` marker from the XP line, leaving the
+    XP numbers intact. No-op if there is no marker."""
+    return _XP_LINE.sub(lambda m: m.group(1), sheet_text, count=1)
+
+
 def apply_to_file(path: pathlib.Path, target_level: int) -> None:
     text = path.read_text(encoding="utf-8")
     path.write_text(set_pending_level(text, target_level), encoding="utf-8")
 
 
+def clear_to_file(path: pathlib.Path) -> None:
+    text = path.read_text(encoding="utf-8")
+    path.write_text(clear_pending(text), encoding="utf-8")
+
+
 if __name__ == "__main__":
     import argparse
 
-    p = argparse.ArgumentParser(description="Mark a milestone level-up as pending.")
+    p = argparse.ArgumentParser(description="Mark or clear a milestone level-up marker.")
     p.add_argument("--sheet", required=True, help="path to the character sheet .md")
-    p.add_argument("--level", type=int, required=True, help="target level")
+    p.add_argument("--level", type=int, help="target level")
+    p.add_argument("--clear", action="store_true", help="clear the pending marker instead of setting one")
     args = p.parse_args()
-    apply_to_file(pathlib.Path(args.sheet), args.level)
-    print(f"Marked pending level-up to Level {args.level} on {args.sheet}")
+    if args.clear:
+        clear_to_file(pathlib.Path(args.sheet))
+        print(f"Cleared pending level-up marker on {args.sheet}")
+    else:
+        if args.level is None:
+            p.error("--level is required unless --clear is set")
+        apply_to_file(pathlib.Path(args.sheet), args.level)
+        print(f"Marked pending level-up to Level {args.level} on {args.sheet}")
