@@ -24,6 +24,12 @@
 *Updated at the end of each session — what each active faction did while the party was occupied.*
 *(none yet)*
 
+## Deeds
+*Append-only. Every shift in **Faction stances** (Live State Flags) must cite a deed here.
+Format: `<beat id> — <faction> — <what the party did> — <+ / − / neutral>`. This is the
+party-side provenance the world-side Faction Moves log does not capture (ADR-0016 decision B).*
+*(none yet)*
+
 ## Recent Events
 *(Session 1 pending)*
 
