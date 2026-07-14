@@ -11,6 +11,7 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 DND = REPO / "skills" / "dnd"
 SKILL = (DND / "SKILL.md").read_text(encoding="utf-8")
 CMDS = (DND / "SKILL-commands.md").read_text(encoding="utf-8")
+SCRIPTS = (DND / "SKILL-scripts.md").read_text(encoding="utf-8")
 
 
 class SkillProseTests(unittest.TestCase):
@@ -44,6 +45,16 @@ class SkillProseTests(unittest.TestCase):
         idx = CMDS.find("/dm:dnd beat complete")
         section = CMDS[idx: idx + 900]
         self.assertIn("--clear", section)
+
+    def test_combat_end_awards_no_xp(self):
+        self.assertNotIn("⭐ XP Awarded", CMDS)
+        self.assertNotIn("send XP summary", CMDS)
+
+    def test_xp_award_script_deprecated(self):
+        # xp.py award must be signposted as deprecated under milestone leveling
+        idx = SCRIPTS.find("xp.py")
+        self.assertNotEqual(idx, -1)
+        self.assertIn("deprecated", SCRIPTS.lower())
 
 
 if __name__ == "__main__":

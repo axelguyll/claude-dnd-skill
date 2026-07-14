@@ -57,6 +57,8 @@ Roll mode: generates 3 arrays (4d6kh3 × 6 each). Point buy mode: prints cost ta
 ---
 
 ## XP Script — `scripts/xp.py`
+> **Deprecated under milestone leveling.** This fork does not award XP; leveling is milestone-only (`/dm:dnd beat complete`). `xp.py` is retained only for legacy campaigns and is not part of the live flow.
+
 Awards XP for combat and qualifying non-combat encounters. Reads character files from the campaign directory, updates XP, and pushes to the display sidebar. All tables (difficulty thresholds, CR→XP, monster multipliers, level advancement) are codified in the script — the DM only decides the difficulty tier or provides a monster list.
 
 ```bash
@@ -248,7 +250,7 @@ If `check_input.py` returns output, prepend it to the player's terminal input wh
 - `/dm:dnd load` → `--replace-players --json` (full stats) + `--spell-slots` + `--world-time` + `--factions`
 - HP change → `--player NAME --hp <current> <max>`
 - Temp HP gained/lost → `--player NAME --temp-hp N` (0 to clear)
-- XP awarded → `--player NAME --xp <current> <next>`
+- XP awarded → *(deprecated — milestone fork awards no XP; see /dm:dnd beat complete)*
 - Second Wind used/recovered → `--player NAME --second-wind false/true`
 - Hit die spent → `--player NAME --hit-dice-use`; restored → `--hit-dice-restore N`
 - Spell slot used → `--player NAME --slot-use <level>`; restored → `--slot-restore <level>`
