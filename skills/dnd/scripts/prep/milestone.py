@@ -39,6 +39,7 @@ def clear_to_file(path: pathlib.Path) -> None:
 
 if __name__ == "__main__":
     import argparse
+    import sys
 
     p = argparse.ArgumentParser(description="Mark or clear a milestone level-up marker.")
     p.add_argument("--sheet", required=True, help="path to the character sheet .md")
@@ -51,5 +52,9 @@ if __name__ == "__main__":
     else:
         if args.level is None:
             p.error("--level is required unless --clear is set")
-        apply_to_file(pathlib.Path(args.sheet), args.level)
+        try:
+            apply_to_file(pathlib.Path(args.sheet), args.level)
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            raise SystemExit(1)
         print(f"Marked pending level-up to Level {args.level} on {args.sheet}")

@@ -4,7 +4,9 @@ Run from repo root:
     python3 -m unittest tests.test_prep_milestone -v
 """
 import pathlib
+import subprocess
 import sys
+import tempfile
 import unittest
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
@@ -12,6 +14,11 @@ SKILL = REPO / "skills" / "dnd" if (REPO / "skills" / "dnd").is_dir() else REPO
 sys.path.insert(0, str(SKILL / "scripts"))
 
 from prep import milestone
+
+_MILESTONE = (
+    pathlib.Path(__file__).resolve().parent.parent
+    / "skills" / "dnd" / "scripts" / "prep" / "milestone.py"
+)
 
 SHEET = """# Aldric
 - **Race:** Human | **Class:** Fighter | **Level:** 2 | **Background:** Soldier
@@ -46,6 +53,20 @@ class MilestoneMarkerTests(unittest.TestCase):
     def test_clear_pending_noop_when_no_marker(self):
         # clearing a sheet with no marker leaves it unchanged (no raise)
         self.assertEqual(milestone.clear_pending(SHEET), SHEET)
+
+
+class MilestoneCliErrorTests(unittest.TestCase):
+    def test_missing_xp_line_exits_clean_no_traceback(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as f:
+            f.write("# Sheet with no XP line\n**Level:** 3\n")
+            sheet = f.name
+        proc = subprocess.run(
+            [sys.executable, str(_MILESTONE), "--sheet", sheet, "--level", "4"],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(proc.returncode, 1)
+        self.assertNotIn("Traceback", proc.stderr)
+        self.assertIn("error:", proc.stderr.lower())
 
 
 if __name__ == "__main__":
