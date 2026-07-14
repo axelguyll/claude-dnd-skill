@@ -388,12 +388,14 @@ blank = surprise-me), tone, difficulty, and the imported party sheets.
    `Threat arc stage: 1 — Now`, one-line faction states) exactly as `/dm:dnd new` steps 7–10
    produce.
 6. **Seed the authored arc.** In `state.md → ## Campaign Arc`, write the **AUTHORED ARC** block
-   (`type: authored`): `spine_file: spine.json`, `theme`/`resolution` verbatim from the spine,
-   `current_beat: 1`, `outstanding_beats` = every beat id, a `beats:` mirror (one entry per
-   spine beat carrying `id`/`act`/`label`/`what_changes`/`world_pressure`/`status` — beat 1
-   `status: current`, the rest `pending`), and `steering_notes` authored for beat 1. **Delete
-   the DYNAMIC and STRUCTURED blocks** from the template so only the authored block remains
-   (mirrors the structured-import deletion at the `import` command).
+   as **active, uncommented YAML** (strip all leading `#` comment markers from the template;
+   the seeded arc must be live, not commented-out). Populate: `type: authored`, `spine_file: spine.json`,
+   `generated: <today's date>`, `theme`/`resolution` verbatim from the spine, `current_beat: 1`,
+   `outstanding_beats` = every beat id, a `beats:` mirror (one entry per spine beat carrying
+   `id`/`act`/`label`/`what_changes`/`world_pressure`/`status` — beat 1 `status: current`,
+   the rest `pending`), and `steering_notes` authored for beat 1. **Delete the DYNAMIC and
+   STRUCTURED blocks** from the template so only the authored block remains (mirrors the
+   structured-import deletion at the `import` command).
 7. **Seal.** Tell the host: `world.md` / `spine.json` / `state.md` are sealed ("don't read your
    own campaign"); the map shopping list is the one artifact they should read. The campaign now
    appears in `/dm:dnd load` at session 0.
