@@ -51,6 +51,23 @@ class PrepScaffoldProseTests(unittest.TestCase):
         self.assertIn("session-log.md", sec)
 
 
+class BeatCompleteSyncProseTests(unittest.TestCase):
+    def _beat_section(self):
+        idx = CMDS.find("## `/dm:dnd beat complete")
+        end = CMDS.find("\n---", idx)
+        return CMDS[idx:end]
+
+    def test_beat_updates_state_window(self):
+        sec = self._beat_section()
+        self.assertIn("current_beat", sec)
+        self.assertIn("outstanding_beats", sec)
+
+    def test_beat_updates_both_spine_and_state(self):
+        sec = self._beat_section()
+        self.assertIn("spine.json", sec)
+        self.assertIn("steering_notes", sec)
+
+
 class LoadAuthoredProseTests(unittest.TestCase):
     def _load_section(self):
         idx = CMDS.find("## `/dm:dnd load")

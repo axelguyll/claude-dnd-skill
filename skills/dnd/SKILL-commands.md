@@ -127,8 +127,8 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
    - **spine.json (authored campaigns only):** Do **NOT** load at session start. For a
      `type: authored` arc, `state.md → ## Campaign Arc` already carries theme/resolution and
      the current beat window (`current_beat`, `beats`, `steering_notes`) — read the arc there,
-     exactly as for dynamic. Read `spine.json` only at `/dm:dnd beat complete`, when advancing a
-     beat needs its `level_up_to`/`gear`/`threats`. This keeps the heavy spine off the hot path.
+     exactly as for dynamic. Read `spine.json` only when a beat completes, if advancing it needs
+     its `level_up_to`/`gear`/`threats`. This keeps the heavy spine off the hot path.
    - **source/<chapter-id>.md (imported campaigns only):** the full module text, one file per chapter. Never loaded at session start. Before running a scene in a chapter, read that chapter's `source/<id>.md` (the `source_ref` in the arc) — and only that chapter. This is the predefined-story equivalent of reading a single NPC's full entry on demand.
    - **npcs.md:** Index row only at load. **Before writing substantive dialogue or decisions for any named NPC, read their full entry in `npcs-full.md`.** Do not wait for an explicit `/dm:dnd npc [name]` call — do it proactively when a scene centers on that character. Index rows carry surface traits only; personality axes, relationships, and hidden goals are in the full entry.
    - **Do NOT read session-log.md at load** — recent events are already in `state.md → ## Recent Events`. Only read session-log.md if the player explicitly requests a recap, or if DM Calibration from the last 1-2 sessions is needed and not already internalized.
@@ -409,15 +409,17 @@ blank = surprise-me), tone, difficulty, and the imported party sheets.
 
 Advance the spine when the host signals the current beat is done.
 
-1. Mark the beat `status: complete` in the spine; set the next beat `current`.
-2. If the completed beat's `level_up_to` is non-null, for each party sheet: mark the pending
-   level with `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/milestone.py --sheet <sheet> --level <level_up_to>`,
-   then run the normal `/dm:dnd level up` procedure **once per level** from the sheet's current
-   level up to `level_up_to`, applying each intervening level's HP + features in order. The spine
-   may jump more than one level (e.g. 4 → 6), and `character.py levelup` advances a single level
-   per run, so a two-level jump means two level-up passes. **No XP.**
-   Once Level reaches `level_up_to`, clear the marker: `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/milestone.py --sheet <sheet> --clear`.
-3. Apply the beat's `gear` to inventory. Narrate the growth.
+1. **Advance the spine.** In `spine.json`, mark the beat `status: complete`; set the next
+   beat `status: current` (if any).
+2. **Sync state.md.** In `state.md → ## Campaign Arc`: set `current_beat` to the next beat's
+   id, sync `beats[].status`, drop the completed id from `outstanding_beats`, regenerate
+   `steering_notes`. Final beat → leave `current_beat` unset.
+3. **Milestone leveling.** If `level_up_to` is non-null, per party sheet: mark pending with
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/milestone.py --sheet <sheet> --level <level_up_to>`,
+   then run `/dm:dnd level up` **once per level** to `level_up_to` (spine may jump >1 level,
+   e.g. 4 → 6 — one levelup pass per level). **No XP.** Clear:
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/milestone.py --sheet <sheet> --clear`.
+4. Apply the beat's `gear` (from `spine.json`) to inventory. Narrate the growth.
 
 ---
 
