@@ -34,6 +34,12 @@ class SkillProseTests(unittest.TestCase):
         # milestone campaigns must bypass the /dm:dnd level up XP gate
         self.assertIn("Milestone campaigns bypass this gate", CMDS)
 
+    def test_beat_complete_handles_multi_level_jump(self):
+        # milestone jumps can span >1 level (e.g. 4 -> 6); the procedure must loop
+        idx = CMDS.find("/dm:dnd beat complete")
+        section = CMDS[idx: idx + 900]
+        self.assertIn("once per level", section)
+
 
 if __name__ == "__main__":
     unittest.main()

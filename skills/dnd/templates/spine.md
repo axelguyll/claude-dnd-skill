@@ -64,6 +64,7 @@ band for that beat's level, fail validation.
 Six beats, three acts (2/2/2), leveling L1 → L8, every threat in-band for the
 level the party is at during that beat.
 
+<!-- Regression tests (test_prep_example.py, test_prep_cli.py) validate the FIRST ```json block in this file. Keep this the only json fence, or they will check the wrong block. -->
 ```json
 {
   "theme": "t",

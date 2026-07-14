@@ -372,7 +372,9 @@ blank = surprise-me), tone, difficulty, and the imported party sheets.
    If it prints `INVALID`, fix every listed error and re-run. Never proceed on an invalid bible.
 4. **Map shopping list.** In a SEPARATE pass told "describe the look only, never why the
    party goes there or what happens," fill `templates/map-list.md`. Bias to common,
-   acquirable archetypes.
+   acquirable archetypes. Keep the *Acquire* hint a terrain archetype ("large cavern map",
+   "lava foundry map"), never a creature or plot label ("dragon-lair map") — the hint ships
+   in the one artifact the host reads.
 5. **Seal.** Tell the host: world.md / spine / state.md are sealed ("don't read your own
    campaign"); the map shopping list is the one artifact they should read.
 
@@ -381,9 +383,12 @@ blank = surprise-me), tone, difficulty, and the imported party sheets.
 Advance the spine when the host signals the current beat is done.
 
 1. Mark the beat `status: complete` in the spine; set the next beat `current`.
-2. If the completed beat's `level_up_to` is non-null, for each party sheet run:
-   `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/milestone.py --sheet <sheet> --level <level_up_to>`
-   then run the normal `/dm:dnd level up` procedure to apply HP + features. **No XP.**
+2. If the completed beat's `level_up_to` is non-null, for each party sheet: mark the pending
+   level with `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/milestone.py --sheet <sheet> --level <level_up_to>`,
+   then run the normal `/dm:dnd level up` procedure **once per level** from the sheet's current
+   level up to `level_up_to`, applying each intervening level's HP + features in order. The spine
+   may jump more than one level (e.g. 4 → 6), and `character.py levelup` advances a single level
+   per run, so a two-level jump means two level-up passes. **No XP.**
 3. Apply the beat's `gear` to inventory. Narrate the growth.
 
 ---

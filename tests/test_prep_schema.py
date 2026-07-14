@@ -103,6 +103,12 @@ class ValidateBibleTests(unittest.TestCase):
         errs = schema.validate_bible(_bible(beats), self.monsters)
         self.assertTrue(any("gear" in e for e in errs))
 
+    def test_malformed_act_returns_error_not_crash(self):
+        beats = _valid_beats()
+        del beats[0]["act"]  # act -> None, not orderable against ints
+        errs = schema.validate_bible(_bible(beats), self.monsters)  # must not raise
+        self.assertTrue(any("act values must be in" in e for e in errs))
+
 
 if __name__ == "__main__":
     unittest.main()

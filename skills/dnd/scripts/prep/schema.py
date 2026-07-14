@@ -51,10 +51,11 @@ def validate_bible(bible: dict, monsters: list[dict]) -> list[str]:
     acts = [b.get("act") for b in beats]
     if any(a not in _ACTS for a in acts):
         errors.append(f"act values must be in {sorted(_ACTS)}, got {acts}")
-    if acts != sorted(acts):
-        errors.append(f"acts must be non-decreasing across beats, got {acts}")
-    if set(acts) != _ACTS:
-        errors.append(f"all three acts must appear, got acts {sorted(set(acts))}")
+    else:
+        if acts != sorted(acts):
+            errors.append(f"acts must be non-decreasing across beats, got {acts}")
+        if set(acts) != _ACTS:
+            errors.append(f"all three acts must appear, got acts {sorted(set(acts))}")
 
     # level_up_to chain
     non_null = [b.get("level_up_to") for b in beats if b.get("level_up_to") is not None]
