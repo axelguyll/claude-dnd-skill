@@ -51,6 +51,7 @@ party-side provenance the world-side Faction Moves log does not capture (ADR-001
 ## Campaign Arc
 *(sandbox campaigns: set `type: sandbox` — no arc tracking)*
 *(structured campaigns: populated by /dnd import — use structured format)*
+*(prepped campaigns: populated by /dm:dnd prep — use authored format)*
 *(improvised campaigns: auto-generated at /dnd new — use dynamic format)*
 ```yaml
 # --- DYNAMIC ARC (improvised campaigns, auto-generated at /dnd new) ---
@@ -146,6 +147,28 @@ revision_log: []
 # outstanding_beats: ["<beat>"]
 # steering_notes: >
 #   <How to guide players toward outstanding beats without forcing.>
+
+# --- AUTHORED ARC (prepped campaigns, seeded at /dm:dnd prep) ---
+# Prepped campaigns keep this dynamic-format window inline. The heavy spine
+# (level_up_to / threats / gear / secret / situation) lives in spine.json and
+# is read only at /dm:dnd beat complete — never at load.
+# type: authored
+# spine_file: spine.json
+# generated: "<date>"
+# theme: "<verbatim from spine.theme>"
+# resolution: "<verbatim from spine.resolution>"
+# current_beat: 1              # int id, matches spine beat ids
+# outstanding_beats: [1, 2, 3, 4, 5, 6]
+# beats:
+#   - id: 1
+#     act: 1
+#     label: "<from spine>"
+#     what_changes: "<from spine>"
+#     world_pressure: "<from spine>"
+#     status: current          # current | complete | skipped
+# steering_notes: >
+#   <How to apply world_pressure toward beat <current_beat> without forcing it.
+#    Regenerated at each beat advance.>
 ```
 
 ## Arc History
