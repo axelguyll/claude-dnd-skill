@@ -127,6 +127,18 @@ class ValidateBibleTests(unittest.TestCase):
         errs = schema.validate_bible(_bible(beats), self.monsters)
         self.assertTrue(any("threats must be a list" in e for e in errs))
 
+    def test_invalid_status_flagged(self):
+        beats = _valid_beats()
+        beats[0]["status"] = "in-progress"  # not a legal status
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("status" in e for e in errs))
+
+    def test_missing_status_flagged(self):
+        beats = _valid_beats()
+        del beats[0]["status"]
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("status" in e for e in errs))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -19,6 +19,7 @@ bestiary = importlib.import_module("prep.bestiary")
 
 _ACTS = {1, 2, 3}
 _MIN_BEATS, _MAX_BEATS = 6, 8
+_STATUSES = {"pending", "current", "complete", "skipped"}
 
 
 def party_levels(beats: list[dict]) -> list[int]:
@@ -78,6 +79,11 @@ def validate_bible(bible: dict, monsters: list[dict]) -> list[str]:
             errors.append(f"beat {bid}: secret key required (prose or null)")
         elif not (b["secret"] is None or isinstance(b["secret"], str)):
             errors.append(f"beat {bid}: secret must be prose or null")
+        if b.get("status") not in _STATUSES:
+            errors.append(
+                f"beat {bid}: status {b.get('status')!r} must be one of "
+                f"{sorted(_STATUSES)}"
+            )
         gear = b.get("gear", [])
         if not isinstance(gear, list):
             errors.append(f"beat {bid}: gear must be a list")
