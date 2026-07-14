@@ -98,5 +98,12 @@ class LegacyDeprecationProseTests(unittest.TestCase):
         self.assertIn("legacy", section.lower())
 
 
+class DeedRuleProseTests(unittest.TestCase):
+    def test_deed_ledger_allows_session_number(self):
+        idx = CMDS.find("Deed rule")
+        section = CMDS[idx: idx + 300]
+        self.assertIn("session number", section)
+
+
 if __name__ == "__main__":
     unittest.main()

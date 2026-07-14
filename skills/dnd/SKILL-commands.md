@@ -446,7 +446,7 @@ Then update `## Faction Moves` in state.md: for each active faction, answer *"wh
 
 **Deed rule:** never change a faction's stance without recording the cause. Every shift in
 **Faction stances** must **cite a deed** appended to the `## Deeds` ledger in state.md
-(`<beat> — <faction> — <what the party did> — <+/−/neutral>`).
+(`<beat id or session number> — <faction> — <what the party did> — <+/−/neutral>`).
 
 **Session tail archive:** `dnd-display-app.py` continuously writes `~/.claude/dnd/campaigns/<name>/session_tail.json` — campaign-specific path, atomic-write, skip-on-empty guarded (since 2026-05-01). At save time:
 
