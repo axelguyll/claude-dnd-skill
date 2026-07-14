@@ -358,6 +358,11 @@ Campaign "<name>" created from <source title>.
 Generate the authored campaign **bible** before session one. Inputs: premise (optional —
 blank = surprise-me), tone, difficulty, and the imported party sheets.
 
+0. **Resolve campaign + dir.** If `<name>` was not supplied, ask for it. Create the
+   campaign dir: `mkdir -p ~/.claude/dnd/campaigns/<name>/characters`. Ruleset defaults
+   to **2014**; if the host passed `ruleset:2024`, use 2024 (and, as in `/dm:dnd new`
+   step 2, verify/build the 2024 dataset). Do not interrupt with a ruleset question —
+   prep is a seal-and-walk-away flow.
 1. **World layer.** Fill `templates/world.md` (Factions with Goals/Methods/Resources/
    Opposition/Secret/Current-activity/Attitude; Adventure Nodes as *situations, not plots*;
    Three Truths per element). Write to the campaign's `world.md`.
@@ -367,16 +372,31 @@ blank = surprise-me), tone, difficulty, and the imported party sheets.
    Pick what is *dramatic* from the in-band list only. Author each beat per the schema in
    `templates/spine.md`: situations-not-objectives, ≥3 hooks (rule of three), causal
    first-domino chain, absolute `level_up_to` (monotonic, final non-null, arc ends ≈ L8),
-   `gear`, `threats` (exact MM names), `secret` (prose or null). Write the bible JSON.
-3. **Validate — hard gate.** `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/schema.py --bible <path>`
-   If it prints `INVALID`, fix every listed error and re-run. Never proceed on an invalid bible.
+   `gear`, `threats` (exact MM names), `secret` (prose or null), `status: pending`. Write
+   the bible to the canonical path `~/.claude/dnd/campaigns/<name>/spine.json`.
+3. **Validate — hard gate.** `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/schema.py --bible ~/.claude/dnd/campaigns/<name>/spine.json`
+   If it prints `INVALID`, fix every listed error and re-run. Never proceed on an invalid spine.
 4. **Map shopping list.** In a SEPARATE pass told "describe the look only, never why the
    party goes there or what happens," fill `templates/map-list.md`. Bias to common,
    acquirable archetypes. Keep the *Acquire* hint a terrain archetype ("large cavern map",
-   "lava foundry map"), never a creature or plot label ("dragon-lair map") — the hint ships
-   in the one artifact the host reads.
-5. **Seal.** Tell the host: world.md / spine / state.md are sealed ("don't read your own
-   campaign"); the map shopping list is the one artifact they should read.
+   "lava foundry map"), never a creature or plot label — the hint ships in the one artifact
+   the host reads.
+5. **Scaffold campaign files.** Copy `npcs.md` and `session-log.md` from
+   `${CLAUDE_SKILL_DIR}/templates/` into the campaign dir (empty). Write `state.md` from the
+   template: header `Session count: 0` and `**Ruleset:**` from step 0; `## Current Situation →
+   Location` = the setting of spine beat 1's `situation`; seed `## World State` (in-world date,
+   `Threat arc stage: 1 — Now`, one-line faction states) exactly as `/dm:dnd new` steps 7–10
+   produce.
+6. **Seed the authored arc.** In `state.md → ## Campaign Arc`, write the **AUTHORED ARC** block
+   (`type: authored`): `spine_file: spine.json`, `theme`/`resolution` verbatim from the spine,
+   `current_beat: 1`, `outstanding_beats` = every beat id, a `beats:` mirror (one entry per
+   spine beat carrying `id`/`act`/`label`/`what_changes`/`world_pressure`/`status` — beat 1
+   `status: current`, the rest `pending`), and `steering_notes` authored for beat 1. **Delete
+   the DYNAMIC and STRUCTURED blocks** from the template so only the authored block remains
+   (mirrors the structured-import deletion at the `import` command).
+7. **Seal.** Tell the host: `world.md` / `spine.json` / `state.md` are sealed ("don't read your
+   own campaign"); the map shopping list is the one artifact they should read. The campaign now
+   appears in `/dm:dnd load` at session 0.
 
 ## `/dm:dnd beat complete [<beat id>]`
 

@@ -28,5 +28,28 @@ class AuthoredArcTemplateTests(unittest.TestCase):
             self.assertIn(field, section)
 
 
+class PrepScaffoldProseTests(unittest.TestCase):
+    def _prep_section(self):
+        idx = CMDS.find("## `/dm:dnd prep")
+        end = CMDS.find("## `/dm:dnd beat complete", idx)
+        return CMDS[idx:end]
+
+    def test_prep_writes_canonical_spine_json(self):
+        self.assertIn("spine.json", self._prep_section())
+
+    def test_prep_scaffolds_state_md(self):
+        sec = self._prep_section()
+        self.assertIn("state.md", sec)
+        self.assertIn("Session count: 0", sec)
+
+    def test_prep_seeds_authored_arc(self):
+        self.assertIn("type: authored", self._prep_section())
+
+    def test_prep_scaffolds_supporting_files(self):
+        sec = self._prep_section()
+        self.assertIn("npcs.md", sec)
+        self.assertIn("session-log.md", sec)
+
+
 if __name__ == "__main__":
     unittest.main()
