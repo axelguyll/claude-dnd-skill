@@ -5,6 +5,16 @@ from __future__ import annotations
 
 import importlib
 
+import pathlib as _pathlib
+import sys as _sys
+
+# Make the `prep` package importable when this file is run as a script
+# (python .../prep/schema.py). As a script, sys.path[0] is prep/ itself, so its
+# parent (skills/dnd/scripts) must be added for `import prep.bestiary` to resolve.
+_scripts_dir = str(_pathlib.Path(__file__).resolve().parent.parent)
+if _scripts_dir not in _sys.path:
+    _sys.path.insert(0, _scripts_dir)
+
 bestiary = importlib.import_module("prep.bestiary")
 
 _ACTS = {1, 2, 3}
