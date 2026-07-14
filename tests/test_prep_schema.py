@@ -25,5 +25,84 @@ class PartyLevelTests(unittest.TestCase):
         self.assertEqual(schema.party_levels(beats), [1, 1, 2, 2])
 
 
+def _valid_beats():
+    # 6 beats, 3 acts (2/2/2), L1->8, threats in band for each beat's party level.
+    return [
+        {"id": 1, "act": 1, "label": "Inciting Incident", "situation": "s",
+         "what_changes": "w", "world_pressure": "p", "level_up_to": 2,
+         "gear": ["torch"], "threats": ["Goblin"], "secret": None, "status": "pending"},
+        {"id": 2, "act": 1, "label": "Complication", "situation": "s",
+         "what_changes": "w", "world_pressure": "p", "level_up_to": 3,
+         "gear": [], "threats": ["Bugbear"], "secret": "a hidden cult", "status": "pending"},
+        {"id": 3, "act": 2, "label": "Rising Action", "situation": "s",
+         "what_changes": "w", "world_pressure": "p", "level_up_to": 4,
+         "gear": [], "threats": ["Ogre"], "secret": None, "status": "pending"},
+        {"id": 4, "act": 2, "label": "Midpoint", "situation": "s",
+         "what_changes": "w", "world_pressure": "p", "level_up_to": 6,
+         "gear": [], "threats": [], "secret": None, "status": "pending"},
+        {"id": 5, "act": 3, "label": "All Is Lost", "situation": "s",
+         "what_changes": "w", "world_pressure": "p", "level_up_to": 7,
+         "gear": [], "threats": ["Young Green Dragon"], "secret": None, "status": "pending"},
+        {"id": 6, "act": 3, "label": "Final Confrontation", "situation": "s",
+         "what_changes": "w", "world_pressure": "p", "level_up_to": 8,
+         "gear": ["dragon hoard"], "threats": ["Young Blue Dragon"], "secret": None,
+         "status": "pending"},
+    ]
+
+
+def _bible(beats):
+    return {"theme": "t", "resolution": "r", "causal_thread": "c", "beats": beats}
+
+
+class ValidateBibleTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from prep import bestiary
+        cls.monsters = bestiary.load_monsters()
+
+    def test_valid_bible_passes(self):
+        self.assertEqual(schema.validate_bible(_bible(_valid_beats()), self.monsters), [])
+
+    def test_beat_count_out_of_range(self):
+        errs = schema.validate_bible(_bible(_valid_beats()[:4]), self.monsters)
+        self.assertTrue(any("beat count" in e for e in errs))
+
+    def test_non_monotonic_level_up_to(self):
+        beats = _valid_beats()
+        beats[2]["level_up_to"] = 2  # 3 -> 2, not increasing
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("increasing" in e for e in errs))
+
+    def test_final_beat_level_up_to_must_not_be_null(self):
+        beats = _valid_beats()
+        beats[-1]["level_up_to"] = None
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("final beat" in e for e in errs))
+
+    def test_threat_out_of_band(self):
+        beats = _valid_beats()
+        beats[0]["threats"] = ["Young Red Dragon"]  # CR 10 at party level 1
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("out of band" in e for e in errs))
+
+    def test_unknown_threat_name(self):
+        beats = _valid_beats()
+        beats[0]["threats"] = ["Goblim"]  # typo, not in bestiary
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("unknown monster" in e for e in errs))
+
+    def test_missing_secret_key_flagged(self):
+        beats = _valid_beats()
+        del beats[0]["secret"]
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("secret" in e for e in errs))
+
+    def test_empty_gear_entry_flagged(self):
+        beats = _valid_beats()
+        beats[0]["gear"] = [""]
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("gear" in e for e in errs))
+
+
 if __name__ == "__main__":
     unittest.main()
