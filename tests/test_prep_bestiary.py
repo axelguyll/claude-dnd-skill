@@ -35,5 +35,34 @@ class BandMathTests(unittest.TestCase):
         self.assertFalse(bestiary.cr_in_band(1.0, 8))   # bugbear outgrown by L8
 
 
+class DataLoadTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.monsters = bestiary.load_monsters()
+
+    def test_loads_full_bestiary(self):
+        self.assertEqual(len(self.monsters), 334)
+
+    def test_find_monster_exact(self):
+        goblin = bestiary.find_monster("Goblin", self.monsters)
+        self.assertIsNotNone(goblin)
+        self.assertEqual(goblin["cr"], 0.25)
+
+    def test_find_monster_missing_returns_none(self):
+        self.assertIsNone(bestiary.find_monster("Nonexistent Beast", self.monsters))
+
+    def test_candidates_level_1_include_low_cr_exclude_dragons(self):
+        names = {m["name"] for m in bestiary.candidates_for_level(1, self.monsters)}
+        for legal in ("Goblin", "Bugbear", "Ogre", "Bandit"):
+            self.assertIn(legal, names)
+        for illegal in ("Commoner", "Aboleth", "Young Red Dragon"):
+            self.assertNotIn(illegal, names)
+
+    def test_candidates_level_8_reach_young_dragon(self):
+        names = {m["name"] for m in bestiary.candidates_for_level(8, self.monsters)}
+        self.assertIn("Young Red Dragon", names)   # CR 10, ceiling for L8
+        self.assertNotIn("Bugbear", names)          # CR 1, below L8 floor (2.0)
+
+
 if __name__ == "__main__":
     unittest.main()
