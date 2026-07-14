@@ -54,7 +54,7 @@ class PrepScaffoldProseTests(unittest.TestCase):
 class LoadAuthoredProseTests(unittest.TestCase):
     def _load_section(self):
         idx = CMDS.find("## `/dm:dnd load")
-        end = CMDS.find("## `/dm:dnd save", idx)
+        end = CMDS.find("## `/dm:dnd import", idx)
         return CMDS[idx:end]
 
     def test_load_mentions_authored_arc(self):
@@ -63,7 +63,7 @@ class LoadAuthoredProseTests(unittest.TestCase):
     def test_load_does_not_read_spine_at_load(self):
         sec = self._load_section()
         # the spine is off the hot path — load must say so
-        self.assertIn("spine.json", sec)
+        self.assertIn("spine.json (authored campaigns only)", sec)
         self.assertIn("beat complete", sec)
 
 
