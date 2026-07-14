@@ -84,5 +84,19 @@ class LoadAuthoredProseTests(unittest.TestCase):
         self.assertIn("beat complete", sec)
 
 
+class LegacyDeprecationProseTests(unittest.TestCase):
+    def test_new_command_signposted_legacy(self):
+        idx = CMDS.find("## `/dm:dnd new")
+        section = CMDS[idx: idx + 400]
+        self.assertIn("legacy", section.lower())
+        self.assertIn("prep", section.lower())
+
+    def test_import_command_signposted_legacy(self):
+        idx = CMDS.find("## `/dm:dnd import")
+        self.assertNotEqual(idx, -1)
+        section = CMDS[idx: idx + 400]
+        self.assertIn("legacy", section.lower())
+
+
 if __name__ == "__main__":
     unittest.main()

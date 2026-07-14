@@ -7,6 +7,9 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 ---
 
 ## `/dm:dnd new <campaign-name> [theme]`
+
+> **Legacy mode (no leveling).** This milestone-only fork levels via authored beats; dynamic/sandbox campaigns started here have no leveling path. For a levelable campaign use `/dm:dnd prep`.
+
 1. **Session setup — call `AskUserQuestion`** with **two questions**:
 
    **Q1 *"Display & input mode?"***
@@ -239,6 +242,8 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 ---
 
 ## `/dm:dnd import <filepath> [campaign-name]`
+
+> **Legacy mode.** Imported structured campaigns predate the milestone build and have no milestone leveling. Retained for compatibility; new campaigns should use `/dm:dnd prep`.
 
 Import a pre-written campaign from a source file (PDF, MD, TXT, DOCX) and create a playable campaign from it.
 
