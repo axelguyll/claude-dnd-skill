@@ -59,5 +59,35 @@ class SkillProseTests(unittest.TestCase):
         self.assertIn("deprecated", SCRIPTS.lower())
 
 
+class DMVoiceTests(unittest.TestCase):
+    """Guards for the 2026-07-15 DM voice overhaul (spec A-G). These pin prompt
+    content against silent reversion; the real acceptance check is a live
+    read-through, not these assertions."""
+
+    def test_a_persona_is_plain_spoken_not_dark(self):
+        self.assertNotIn("dark, immersive", SKILL)
+        self.assertIn("talk like a real person running a game", SKILL)
+
+    def test_c_tone_follows_scene_not_theme(self):
+        self.assertIn("Tone follows the scene, not the theme", SKILL)
+
+    def test_b_length_follows_scene_heat(self):
+        self.assertIn("Length follows the scene's heat", SKILL)
+
+    def test_d_read_aloud_and_spoken_sentences(self):
+        self.assertIn("would you actually say this", SKILL)
+        self.assertIn("not book-style fragments", SKILL)
+
+    def test_e_npc_speech_always_its_own_block(self):
+        self.assertNotIn("don't need a separate block", SKILL)
+        self.assertIn("Always put NPC speech in its own", SKILL)
+
+    def test_f_no_rote_what_do_you_do(self):
+        self.assertIn("Don't tag every turn with", SKILL)
+
+    def test_g_phonetic_hint_for_invented_names(self):
+        self.assertIn("pronunciation hint the first time an invented name appears", SKILL)
+
+
 if __name__ == "__main__":
     unittest.main()
