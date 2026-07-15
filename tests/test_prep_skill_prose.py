@@ -120,5 +120,26 @@ class DMAuthenticityTests(unittest.TestCase):
         self.assertIn("Ability (Skill)", SKILL)
 
 
+class DMDashboardProseTests(unittest.TestCase):
+    """Bucket B: NPC speech renders as a concrete blockquoted, bold-labeled
+    block, and a sound-cue block type bridges narration to the asset hub."""
+
+    def test_npc_block_format_is_concrete(self):
+        # The rule must say HOW, not just "in its own block".
+        self.assertIn("bold speaker-labeled", SKILL)
+
+    def test_sound_cue_block_exists(self):
+        self.assertIn("🔊 **Cue:**", SKILL)
+
+    def test_sound_cue_points_at_asset_hub(self):
+        self.assertIn("assets.html", SKILL)
+
+    def test_sound_cue_forbids_inventing_cues(self):
+        idx = SKILL.find("🔊 **Cue:**")
+        self.assertNotEqual(idx, -1)
+        window = SKILL[idx - 400: idx + 400]
+        self.assertIn("never invent a cue", window)
+
+
 if __name__ == "__main__":
     unittest.main()
