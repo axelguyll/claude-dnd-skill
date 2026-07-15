@@ -45,6 +45,30 @@ class RenderTests(unittest.TestCase):
         # A refresh would reload the page and kill any playing ambient loop.
         self.assertNotIn('http-equiv="refresh"', self.html)
 
+    def test_map_desc_and_link_render(self):
+        self.assertIn("big cave", self.html)
+        self.assertIn('href="maps/cavern.png"', self.html)
+
+
+TPL = pathlib.Path(__file__).resolve().parent.parent / "skills" / "dnd" / "templates"
+
+
+class TemplateRoundTripTests(unittest.TestCase):
+    def test_map_template_example_parses(self):
+        items = render_assets.parse_asset_list((TPL / "map-list.md").read_text(encoding="utf-8"))
+        self.assertEqual(len(items), 1)
+        self.assertTrue(items[0]["file"].startswith("maps/"))
+
+    def test_ambient_template_example_parses(self):
+        items = render_assets.parse_asset_list((TPL / "ambient-list.md").read_text(encoding="utf-8"))
+        self.assertEqual(len(items), 1)
+        self.assertTrue(items[0]["file"].startswith("sounds/"))
+
+    def test_sfx_template_example_parses(self):
+        items = render_assets.parse_asset_list((TPL / "sfx-list.md").read_text(encoding="utf-8"))
+        self.assertEqual(len(items), 1)
+        self.assertTrue(items[0]["file"].startswith("sounds/"))
+
 
 if __name__ == "__main__":
     unittest.main()

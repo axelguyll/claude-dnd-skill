@@ -53,6 +53,7 @@ class RenderTrackerTests(unittest.TestCase):
     def test_meta_refresh_present(self):
         out = render_tracker.render_tracker_html(self.combatants, 2, {}, self.eff)
         self.assertIn('http-equiv="refresh"', out)
+        self.assertIn('content="4"', out)
 
     def test_tracker_json_merges_conditions_conc_and_death_saves(self):
         ts = {"piper": {"conditions": ["frightened"], "concentration": "Bless",

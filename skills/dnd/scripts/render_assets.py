@@ -45,10 +45,16 @@ def parse_asset_list(text: str) -> list:
 def _section_maps(maps: list) -> str:
     if not maps:
         return '<p class="none">No maps.</p>'
-    return "".join(
-        f'<figure><img src="{html.escape(m["file"])}" alt="{html.escape(m["handle"])}" '
-        f'loading="lazy"><figcaption>{html.escape(m["handle"])}</figcaption></figure>'
-        for m in maps)
+    out = []
+    for m in maps:
+        handle = html.escape(m["handle"])
+        file_ = html.escape(m["file"])
+        desc_html = f'<span class="desc">{html.escape(m["desc"])}</span>' if m["desc"] else ""
+        out.append(
+            f'<figure><a href="{file_}" target="_blank" rel="noopener">'
+            f'<img src="{file_}" alt="{handle}" loading="lazy"></a>'
+            f'<figcaption>{handle}{desc_html}</figcaption></figure>')
+    return "".join(out)
 
 
 def _section_audio(items: list, prefix: str, loop: bool) -> str:

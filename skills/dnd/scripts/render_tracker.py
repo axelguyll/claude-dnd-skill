@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import html
 import json
-import sys
 
 from paths import find_campaign, srd_path, campaign_ruleset
 
