@@ -17,14 +17,15 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/dice.py 4d6kh3        # ability score roll
 python3 ${CLAUDE_SKILL_DIR}/scripts/dice.py d20 adv       # advantage
 python3 ${CLAUDE_SKILL_DIR}/scripts/dice.py d20+3 dis     # disadvantage + modifier
 python3 ${CLAUDE_SKILL_DIR}/scripts/dice.py d20 --silent  # returns integer only
+python3 ${CLAUDE_SKILL_DIR}/scripts/dice.py d20+6 --attack # attack roll: crit/fumble on nat 20/1
 
 # Pass --label to annotate what the roll is for:
 python3 ${CLAUDE_SKILL_DIR}/scripts/dice.py d20+4 --label "Perception check"
-python3 ${CLAUDE_SKILL_DIR}/scripts/dice.py d20+6 adv --label "Attack — Goblin Boss vs Piper"
+python3 ${CLAUDE_SKILL_DIR}/scripts/dice.py d20+6 adv --attack --label "Attack — Goblin Boss vs Piper"
 python3 ${CLAUDE_SKILL_DIR}/scripts/dice.py 2d8+3 --label "Greataxe damage"
 ```
 
-Flags nat 20 (CRITICAL HIT) and nat 1 (FUMBLE) automatically.
+A nat 20/1 auto-hits/misses and crits **only on attack rolls**. Pass `--attack` to flag nat 20 as CRITICAL HIT and nat 1 as FUMBLE. A bare d20 is treated as a check or save — it prints a neutral `(nat 20)` / `(nat 1)` note, no crit claim (RAW: nat 20/1 are not auto-success/fail on checks and saves). Most attacks resolve through `combat.py`, which already applies this — reach for `dice.py --attack` only for an ad-hoc attack rolled outside the combat tracker.
 
 ---
 

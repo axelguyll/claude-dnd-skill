@@ -89,5 +89,32 @@ class DMVoiceTests(unittest.TestCase):
         self.assertIn("pronunciation hint the first time an invented name appears", SKILL)
 
 
+class DMAuthenticityTests(unittest.TestCase):
+    """Guards for the 6 authenticity adjudication rules (spec:
+    docs/superpowers/specs/2026-07-15-dm-authenticity-rules-design.md).
+    Content pins only — true acceptance is a live read-through."""
+
+    def test_rule1_phantom_items_refused(self):
+        self.assertIn("Inventory and the enemy roster are ground truth", SKILL)
+
+    def test_rule2_hidden_dc(self):
+        self.assertIn("Never state the DC", SKILL)
+        self.assertIn("stays behind the screen", SKILL)
+
+    def test_rule3_context_driven_rolls(self):
+        self.assertIn("Stakes decide whether a roll happens", SKILL)
+
+    def test_rule4a_nat_only_auto_on_attacks(self):
+        self.assertIn("Natural 1 and 20 are automatic only on attack rolls", SKILL)
+
+    def test_rule4b_fail_forward_with_puzzle_carveout(self):
+        self.assertIn("A failed roll complicates", SKILL)
+        self.assertIn("does not apply to puzzles", SKILL)
+
+    def test_rule5_voice_conditions_and_name_dice(self):
+        self.assertIn("Voice an active condition's mechanical effect and name the dice", SKILL)
+        self.assertIn("advantage and disadvantage never stack", SKILL)
+
+
 if __name__ == "__main__":
     unittest.main()

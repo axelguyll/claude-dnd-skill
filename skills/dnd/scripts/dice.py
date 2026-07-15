@@ -54,7 +54,7 @@ def format_modifier(mod):
     return f" + {mod}" if mod > 0 else f" - {abs(mod)}"
 
 
-def run(notation: str, silent: bool = False, label: str = "") -> int:
+def run(notation: str, silent: bool = False, label: str = "", attack: bool = False) -> int:
     num_dice, die_size, modifier, keep_mode, keep_count, adv, dis = parse_notation(notation)
 
     if label and not silent:
@@ -94,9 +94,11 @@ def run(notation: str, silent: bool = False, label: str = "") -> int:
             raw = rolls[0]
             flag = ""
             if raw == 20:
-                flag = "  *** CRITICAL HIT (nat 20)! ***"
+                # Auto-hit/crit is RAW only for attack rolls; a bare d20 is a
+                # check/save, so state the natural result without claiming a crit.
+                flag = "  *** CRITICAL HIT (nat 20)! ***" if attack else "  (nat 20)"
             elif raw == 1:
-                flag = "  *** FUMBLE (nat 1)! ***"
+                flag = "  *** FUMBLE (nat 1)! ***" if attack else "  (nat 1)"
             print(f"Roll: {raw}{format_modifier(modifier)} = {result}{flag}")
         else:
             print(f"Rolls: {rolls}{format_modifier(modifier)} = {result}")
@@ -106,19 +108,20 @@ def run(notation: str, silent: bool = False, label: str = "") -> int:
 if __name__ == "__main__":
     argv = sys.argv[1:]
     silent = "--silent" in argv
+    attack = "--attack" in argv
     label = ""
     if "--label" in argv:
         i = argv.index("--label")
         if i + 1 < len(argv):
             label = argv[i + 1]
             del argv[i:i + 2]
-    args = [a for a in argv if a != "--silent"]
+    args = [a for a in argv if a not in ("--silent", "--attack")]
 
     if not args:
-        print("Usage: python3 dice.py <notation>  e.g. d20+5  2d6  4d6kh3  d20 adv")
+        print("Usage: python3 dice.py <notation>  e.g. d20+5  2d6  4d6kh3  d20 adv  (add --attack for attack-roll crit/fumble)")
         sys.exit(1)
 
     notation = " ".join(args)
-    result = run(notation, silent=silent, label=label)
+    result = run(notation, silent=silent, label=label, attack=attack)
     if silent:
         print(result)
