@@ -49,7 +49,7 @@ def _section_maps(maps: list) -> str:
     for m in maps:
         handle = html.escape(m["handle"])
         file_ = html.escape(m["file"])
-        desc_html = f'<span class="desc">{html.escape(m["desc"])}</span>' if m["desc"] else ""
+        desc_html = f'<br><span class="desc">{html.escape(m["desc"])}</span>' if m["desc"] else ""
         out.append(
             f'<figure><a href="{file_}" target="_blank" rel="noopener">'
             f'<img src="{file_}" alt="{handle}" loading="lazy"></a>'
