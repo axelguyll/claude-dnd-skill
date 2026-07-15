@@ -2,6 +2,12 @@
 """
 xp.py — XP calculation and award for D&D 5e encounters.
 
+DEPRECATED (milestone-only fork): this fork levels on authored story beats, not XP.
+Do NOT call `xp.py award` in the play loop — combat end awards no XP and the party
+levels only at `/dm:dnd beat complete` (see SKILL.md "## Milestone Leveling" and the
+beat-complete procedure in SKILL-commands.md). Retained for the legacy `/dm:dnd new`
+/ `import` paths and as a reference implementation; not part of the milestone lifecycle.
+
 Handles combat (CR-based or difficulty-rated) and qualifying non-combat encounters.
 Reads campaign character files for current state, updates XP, and pushes to the display.
 
