@@ -96,6 +96,26 @@ def validate_bible(bible: dict, monsters: list[dict]) -> list[str]:
         if not isinstance(threats, list):
             errors.append(f"beat {bid}: threats must be a list")
 
+    # status coherence: the beat statuses must describe a possible play-state.
+    # Only checked when every status is individually valid (else statuses above
+    # already flagged them and phase lookup would be undefined).
+    statuses = [b.get("status") for b in beats]
+    if all(isinstance(s, str) and s in _STATUSES for s in statuses):
+        if statuses.count("current") > 1:
+            errors.append(
+                f"at most one beat may be 'current', got {statuses.count('current')}"
+            )
+        # Statuses must read as: resolved (complete/skipped) -> current -> pending
+        # across beats. Phase must be non-decreasing; a drop means an impossible
+        # state (e.g. a completed beat after the current one).
+        phase = {"complete": 0, "skipped": 0, "current": 1, "pending": 2}
+        phases = [phase[s] for s in statuses]
+        if phases != sorted(phases):
+            errors.append(
+                "status order must run resolved (complete/skipped) -> current -> "
+                f"pending across beats, got {statuses}"
+            )
+
     # threats: known name + in band for that beat's party level
     levels = party_levels(beats)
     for b, lvl in zip(beats, levels):

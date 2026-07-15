@@ -145,6 +145,44 @@ class ValidateBibleTests(unittest.TestCase):
         errs = schema.validate_bible(_bible(beats), self.monsters)  # must not raise
         self.assertTrue(any("status" in e for e in errs))
 
+    def test_two_current_beats_flagged(self):
+        beats = _valid_beats()
+        beats[0]["status"] = "current"
+        beats[1]["status"] = "current"  # two playheads — impossible
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("current" in e for e in errs))
+
+    def test_complete_after_current_flagged(self):
+        # The F4 bug: on beat 2 while a later beat is already complete.
+        beats = _valid_beats()
+        beats[1]["status"] = "current"
+        beats[4]["status"] = "complete"
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("status order" in e for e in errs))
+
+    def test_pending_before_resolved_flagged(self):
+        # A pending beat cannot precede a completed one.
+        beats = _valid_beats()
+        beats[0]["status"] = "pending"
+        beats[1]["status"] = "complete"
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("status order" in e for e in errs))
+
+    def test_coherent_midplay_spine_passes(self):
+        # Resolved prefix, one current, pending tail — a real mid-play state.
+        beats = _valid_beats()
+        beats[0]["status"] = "complete"
+        beats[1]["status"] = "skipped"
+        beats[2]["status"] = "current"
+        # beats 4..6 stay pending
+        self.assertEqual(schema.validate_bible(_bible(beats), self.monsters), [])
+
+    def test_terminal_all_complete_passes(self):
+        beats = _valid_beats()
+        for b in beats:
+            b["status"] = "complete"
+        self.assertEqual(schema.validate_bible(_bible(beats), self.monsters), [])
+
 
 if __name__ == "__main__":
     unittest.main()
