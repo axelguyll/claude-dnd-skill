@@ -5,7 +5,7 @@ build_supplemental.py — fetch and cache non-SRD spell/feature descriptions
 
 Scans character files (or takes explicit names) for spells/features missing from
 the SRD, fetches their descriptions from dnd5e.wikidot.com, and writes them to
-dnd5e_supplemental.json so the display companion can resolve them locally.
+dnd5e_supplemental.json so lookups resolve them locally.
 
 Usage:
     # Scan a campaign's characters and fetch anything missing
@@ -288,7 +288,7 @@ def _build_entry(name: str, category: str) -> dict | None:
         "wikidot_url": f"{WIKIDOT_BASE}/{path}",
     }
     if category == "spell":
-        entry["level"] = 0      # unknown; display won't show blank level
+        entry["level"] = 0      # unknown; avoids a blank level in output
         entry["school"] = ""
     else:
         entry["class"] = ""

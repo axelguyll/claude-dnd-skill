@@ -31,7 +31,7 @@ _REMOTE_VERSION_URL = os.environ.get("DND_UPDATE_VERSION_URL", "").strip() or (
     "https://raw.githubusercontent.com/neuralinitiative/claude-dnd-skill/main/VERSION"
 )
 
-# The skill dir holds SKILL.md + scripts/data/display. The git checkout root is
+# The skill dir holds SKILL.md + scripts/data. The git checkout root is
 # the repo root: skill dir is <repo>/skills/dnd, so the repo is two levels up.
 # (Legacy standalone installs had the repo == skill dir; walk up to find .git.)
 SKILL_DIR = _skill_root()

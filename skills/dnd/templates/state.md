@@ -176,7 +176,8 @@ revision_log: []
 *(leave empty until the first arc completes)*
 
 ## Session Flags
-*(tutor_mode, autorun, autorun_interval, tts_voice, sfx_languages, autosave — session-scoped flags set via /dnd commands or by the display companion)*
+*(tutor_mode, roll_mode, autosave — session-scoped flags set via /dnd commands)*
+*(roll_mode: players|auto — default players. Who rolls PC d20s; see SKILL.md "Dice convention".)*
 *(autosave: on|off — default on. Governs the behind-the-scenes continuity checkpoint (Live State Flags + graph + session tail). Toggle with /dm:dnd autosave on|off.)*
 
 ## DM Notes (hidden from players)
