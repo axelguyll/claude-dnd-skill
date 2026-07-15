@@ -362,12 +362,12 @@ Out of combat, do not call it — leave the last tracker in place.
 
 ## Asset-Hub Render — `scripts/render_assets.py`
 
-Writes the host-side `assets.html` (maps + ambient loops + SFX buttons) from the three
-prep shopping lists in the campaign dir (`map-list.md`, `ambient-list.md`, `sfx-list.md`).
-Run once at the end of prep, and again any time the host adds or renames sound/map files.
-Buttons are pre-wired to the canonical filenames; a button whose file is not yet in
-`maps/`/`sounds/` simply plays nothing until the file exists. This file is **static** — it
-carries no meta-refresh, so a combat-tracker regen never interrupts a playing ambient loop.
+Writes the host-side `assets.html` (maps + ambient loops) from the prep shopping lists in
+the campaign dir (`map-list.md`, `ambient-list.md`). Run once at the end of prep, and again
+any time the host adds or renames sound/map files. Controls are pre-wired to the canonical
+filenames; an ambient toggle whose file is not yet in `sounds/` simply plays nothing until
+the file exists. This file is **static** — it carries no meta-refresh, so a combat-tracker
+regen never interrupts a playing ambient loop.
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/scripts/render_assets.py --campaign <name>

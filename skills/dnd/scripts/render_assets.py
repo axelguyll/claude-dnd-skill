@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-render_assets.py — emit the DM-side asset-hub HTML (maps + ambient + SFX).
+render_assets.py — emit the DM-side asset-hub HTML (maps + ambient loops).
 
-Parses the three filled shopping lists in the campaign dir and writes
+Parses the filled shopping lists in the campaign dir and writes
 <campaign>/assets.html, pre-wired to canonical filenames the host drops into
 maps/ and sounds/. Static: it is NOT regenerated during play and carries no
 meta-refresh, so playing ambient loops are never interrupted by a tracker regen.
@@ -11,9 +11,9 @@ No server — a self-contained local page opened over file://.
 
 Usage:
     python3 render_assets.py --campaign <name>
-        Reads <campaign>/{map-list,ambient-list,sfx-list}.md (any missing list is
-        treated as empty), writes <campaign>/assets.html, ensures maps/ and
-        sounds/ exist, and prints the html path.
+        Reads <campaign>/{map-list,ambient-list}.md (a missing list is treated
+        as empty), writes <campaign>/assets.html, ensures maps/ and sounds/
+        exist, and prints the html path.
 """
 from __future__ import annotations
 
@@ -57,24 +57,21 @@ def _section_maps(maps: list) -> str:
     return "".join(out)
 
 
-def _section_audio(items: list, prefix: str, loop: bool) -> str:
+def _section_ambient(items: list) -> str:
     if not items:
         return '<p class="none">None.</p>'
     out = []
     for i, a in enumerate(items):
-        aid = f"{prefix}{i}"
-        loop_attr = " loop" if loop else ""
-        icon = "▶" if loop else "🔊"
-        onclick = f"tog('{aid}',this)" if loop else f"one('{aid}')"
+        aid = f"amb{i}"
         out.append(
             f'<div class="asset">'
-            f'<audio id="{aid}"{loop_attr} src="{html.escape(a["file"])}"></audio>'
-            f'<button onclick="{onclick}">{icon} {html.escape(a["handle"])}</button>'
+            f'<audio id="{aid}" loop src="{html.escape(a["file"])}"></audio>'
+            f'<button onclick="tog(\'{aid}\',this)">▶ {html.escape(a["handle"])}</button>'
             f'<span class="desc">{html.escape(a["desc"])}</span></div>')
     return "".join(out)
 
 
-def render_assets_html(maps: list, ambient: list, sfx: list) -> str:
+def render_assets_html(maps: list, ambient: list) -> str:
     return f'''<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
@@ -93,11 +90,8 @@ def render_assets_html(maps: list, ambient: list, sfx: list) -> str:
 <h2>Maps</h2>
 <div class="maps">{_section_maps(maps)}</div>
 <h2>Ambient</h2>
-{_section_audio(ambient, "amb", True)}
-<h2>SFX</h2>
-{_section_audio(sfx, "sfx", False)}
+{_section_ambient(ambient)}
 <script>
- function one(id){{var a=document.getElementById(id);a.currentTime=0;a.play();}}
  function tog(id,btn){{var a=document.getElementById(id);
   if(a.paused){{a.play();btn.classList.add("on");}}
   else{{a.pause();btn.classList.remove("on");}}}}
@@ -122,10 +116,9 @@ def main(argv=None):
 
     maps = parse_asset_list(_read(camp, "map-list.md"))
     ambient = parse_asset_list(_read(camp, "ambient-list.md"))
-    sfx = parse_asset_list(_read(camp, "sfx-list.md"))
 
     out = camp / "assets.html"
-    out.write_text(render_assets_html(maps, ambient, sfx), encoding="utf-8")
+    out.write_text(render_assets_html(maps, ambient), encoding="utf-8")
     print(str(out))
 
 

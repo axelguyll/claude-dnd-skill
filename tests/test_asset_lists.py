@@ -21,17 +21,10 @@ class AssetListTemplateTests(unittest.TestCase):
         self.assertIn("atmosphere only", text)
         self.assertIn("File: sounds/", text)
 
-    def test_sfx_list_exists_and_forbids_leaking_the_trigger(self):
-        text = (TPL / "sfx-list.md").read_text(encoding="utf-8")
-        self.assertIn("sound only", text)
-        self.assertIn("spine-guaranteed", text)
-        self.assertIn("File: sounds/", text)
-
 
 class PrepFlowTests(unittest.TestCase):
-    def test_prep_generates_all_three_lists(self):
+    def test_prep_generates_ambient_list(self):
         self.assertIn("ambient-list.md", CMDS)
-        self.assertIn("sfx-list.md", CMDS)
 
     def test_prep_builds_the_asset_hub(self):
         self.assertIn("render_assets.py", CMDS)
