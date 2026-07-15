@@ -10,15 +10,9 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 
 > **Legacy mode (no leveling).** This milestone-only fork levels via authored beats; dynamic/sandbox campaigns started here have no leveling path. For a levelable campaign use `/dm:dnd prep`.
 
-1. **Session setup — call `AskUserQuestion`** with **two questions**:
+1. **Session setup — call `AskUserQuestion`**:
 
-   **Q1 *"Display & input mode?"***
-   - `No display` → continue without display.
-   - `Display (local)` → `bash ${CLAUDE_SKILL_DIR}/display/start-display.sh`, print URL, set `_display_running = true`, then `python3 ${CLAUDE_SKILL_DIR}/display/push_stats.py --clear`.
-   - `Display (LAN)` → `bash ${CLAUDE_SKILL_DIR}/display/start-display.sh --lan`, print both URLs, set `_display_running = true`, then `--clear` as above.
-   - `Display + autorun (LAN)` → as **Display (LAN)**, and write `autorun: true` to `state.md → ## Session Flags`.
-
-   **Q2 *"Dice rolls?"*** — set how PC d20s are handled (see SKILL.md "Dice convention"):
+   ***"Dice rolls?"*** — set how PC d20s are handled (see SKILL.md "Dice convention"):
    - `Players roll their own` (default) → write `roll_mode: players` to `state.md → ## Session Flags`. You will call for each PC roll and wait — never auto-roll a PC.
    - `DM rolls everything openly` → write `roll_mode: auto`. You resolve PC rolls yourself with full math shown.
 
@@ -64,41 +58,19 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
    **If no:** Write `type: sandbox` to `## Campaign Arc`. The story remains open-ended with no arc tracking.
 
 14. Write state.md with session count 0, starting location.
-15. **Physical dice server check (only if installed).** Skip this step unless the optional dice server is set up: probe with `test -d ~/.dnd-dice || test "$DND_DICE_PHYSICAL" = "1"` and short-circuit out if the test fails. When it passes, run `curl -sf http://localhost:7777/health` (timeout 1s). If it returns OK, fetch the LAN IP with `python3 -c "import socket; s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.connect(('8.8.8.8', 80)); print(s.getsockname()[0]); s.close()"` and announce: *"Dice server is up. Once each player has made a character via `/dm:dnd character new`, they should open `http://<ip>:7777/?player=<pc-name>` on their phone (lowercase, hyphens for spaces) and tap **consecrate** before play starts. NPC/DM rolls auto-resolve on the host."* If unreachable, skip silently.
-16. Confirm creation, offer `/dm:dnd character new`.
+15. Confirm creation, offer `/dm:dnd character new`.
 
 ---
 
 ## `/dm:dnd load <campaign-name>`
 0. **Pick the campaign if none was named.** If `<campaign-name>` was supplied (or the player clearly named one), use it. Otherwise `ls` the campaigns dir (`~/.claude/dnd/campaigns/` or `$DND_CAMPAIGN_ROOT/campaigns/`) and **call `AskUserQuestion`**: *"Which campaign?"* with the existing campaign names as options (most-recently-played first — sort by `state.md` mtime). The player can pick "Other" to type a name. If there are no campaigns, tell them and offer `/dm:dnd new`.
-1. **Session setup — call `AskUserQuestion`** with **two questions** (not typed y/n prompts):
+1. **Session setup — call `AskUserQuestion`** (not a typed y/n prompt):
 
-   **Q1 *"Display & input mode?"***
-   - `No display` → continue without display.
-   - `Display (local)` → `bash ${CLAUDE_SKILL_DIR}/display/start-display.sh`, print URL, set `_display_running = true`.
-   - `Display (LAN)` → `bash ${CLAUDE_SKILL_DIR}/display/start-display.sh --lan`, print both URLs, set `_display_running = true`.
-   - `Display + autorun (LAN)` → as **Display (LAN)**, and also write `autorun: true` to `state.md → ## Session Flags`; enter the autorun wait after the recap.
-
-   **Q2 *"Dice rolls?"*** — confirm how PC d20s are handled this session (see SKILL.md "Dice convention"). Pre-fill the recommended option from the existing `roll_mode` in `state.md` if present, else `players`:
+   ***"Dice rolls?"*** — confirm how PC d20s are handled this session (see SKILL.md "Dice convention"). Pre-fill the recommended option from the existing `roll_mode` in `state.md` if present, else `players`:
    - `Players roll their own` → write `roll_mode: players`. Call for each PC roll and wait — never auto-roll a PC.
    - `DM rolls everything openly` → write `roll_mode: auto`. Resolve PC rolls yourself with full math shown.
 
-   - (Defaults if the player dismisses: no display, no autorun, `roll_mode: players` — or the existing saved value.)
-   - **Session tail replay:** before clearing the display, check if the campaign's `session_tail.json` exists. The campaign-side path is the authoritative one — `~/.claude/dnd/campaigns/<name>/session_tail.json`. **Do NOT read** the legacy/fallback at `${CLAUDE_SKILL_DIR}/display/session_tail.json`; that file may exist from older sessions or other campaigns and will mislead the replay. If the campaign-side file does not exist, skip replay (display starts blank). If it does, read it. After `--clear` and full stats push (step 4 below), replay the tail by sending each entry via the appropriate `send.py` flag. Entry type → flag mapping:
-     - `player` key present → `send.py --player <name>` with text via stdin
-     - `npc` key present → `send.py --npc <name>` with text via stdin
-     - `dice` key present → `send.py --dice` with text via stdin
-     - `xp_award` key present → `send.py --xp-award '<json of the xp_award sub-dict>'`
-     - `inspiration_award` key present → `send.py --inspiration-award '<name>'`
-     - none of the above (plain DM narration) → `send.py` with text via stdin
-     This restores the last scene to the display before the recap. The tail is written continuously by `dnd-display-app.py` — it always contains the last session's final exchanges regardless of how the session ended.
-   - Clear previous transcript: `python3 ${CLAUDE_SKILL_DIR}/display/push_stats.py --clear`
-
-     ⚠ **`--clear` wipes both text log AND stats** (player card, world time, factions, quests). It must always be paired with the full `--replace-players ... --world-time ... --factions ... --quests ...` push from step 4 — otherwise the sidebar card and sheet tab render empty. Same rule applies any time you `--clear` mid-session (e.g. restoring scene state after a re-replay): always re-push the full character JSON + world-time + factions + quests in the same bash burst as the clear.
-   - Register active campaign for DM Help: `python3 ${CLAUDE_SKILL_DIR}/display/push_stats.py --set-campaign <campaign-name>`
-   - If autorun **yes** → write `autorun: true` to `state.md → ## Session Flags`; enter the autorun wait after the recap paragraph.
-   - If autorun **no** → continue without autorun; DM drives turns manually.
-   - **Physical dice server check (only if installed).** Skip this step unless the optional dice server is set up: probe with `test -d ~/.dnd-dice || test "$DND_DICE_PHYSICAL" = "1"` and short-circuit out if the test fails. When it passes, run `curl -sf http://localhost:7777/health` (timeout 1s). If it returns OK, fetch the LAN IP with `python3 -c "import socket; s=socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.connect(('8.8.8.8', 80)); print(s.getsockname()[0]); s.close()"` and announce to the table: *"Dice server is up. Each player, open `http://<ip>:7777/?player=<your-pc-name>` on your phone (lowercase name, hyphens for spaces — same name I'll use when calling for rolls) and tap **consecrate** before we begin. NPC and DM rolls auto-resolve here."* Then list the PC short-names from `characters/` so players know what to type. If the server is unreachable, skip silently — `dice.py` falls back to local random.
+   (Default if the player dismisses: `roll_mode: players` — or the existing saved value.)
 
 2. **Backwards-compat: ruleset migration check.** Before reading state.md, run:
 
@@ -119,7 +91,7 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 
    Future migrations (e.g. when 2026 ruleset arrives) follow the same pattern: a small migrator script under `scripts/migrate_<topic>.py` invoked here as a `--check` then `--yes` pair.
 
-3. **Read campaign ruleset** for this session: `python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py campaign-ruleset <name>` (or import `campaign_ruleset` directly). Stash the result; pass `--ruleset <value>` to `lookup.py`, `build_supplemental.py`, and `combat.py` mastery calls so they route to the correct dataset. The display companion picks up the same value automatically via `push_stats.py --set-campaign`.
+3. **Read campaign ruleset** for this session: `python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py campaign-ruleset <name>` (or import `campaign_ruleset` directly). Stash the result; pass `--ruleset <value>` to `lookup.py`, `build_supplemental.py`, and `combat.py` mastery calls so they route to the correct dataset.
 
 4. Read SKILL-scripts.md (for script syntax this session)
 5. **Mark this campaign active** (for the autosave hook): write `{"name": "<campaign-name>"}` to `$(python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py runtime-dir)/active-campaign.json`. This is what `autosave_checkpoint.py` reads to know which campaign to checkpoint; a stale marker is harmless. Then read state.md, world.md, npcs.md (index only), and all characters/*.md
@@ -135,69 +107,7 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
    - **source/<chapter-id>.md (imported campaigns only):** the full module text, one file per chapter. Never loaded at session start. Before running a scene in a chapter, read that chapter's `source/<id>.md` (the `source_ref` in the arc) — and only that chapter. This is the predefined-story equivalent of reading a single NPC's full entry on demand.
    - **npcs.md:** Index row only at load. **Before writing substantive dialogue or decisions for any named NPC, read their full entry in `npcs-full.md`.** Do not wait for an explicit `/dm:dnd npc [name]` call — do it proactively when a scene centers on that character. Index rows carry surface traits only; personality axes, relationships, and hidden goals are in the full entry.
    - **Do NOT read session-log.md at load** — recent events are already in `state.md → ## Recent Events`. Only read session-log.md if the player explicitly requests a recap, or if DM Calibration from the last 1-2 sessions is needed and not already internalized.
-6. Push full party stats to display sidebar. **CRITICAL:** use `--json` with a complete player object — **never** the `--player` shorthand here. `--player` only updates existing fields; it cannot populate the card or sheet tabs. The display shows "Full sheet not loaded" when `sheet` is absent.
-
-   ```bash
-   python3 ${CLAUDE_SKILL_DIR}/display/push_stats.py --replace-players --json '{
-     "players": [
-       {
-         "name": "CharName",
-         "race": "Race",
-         "class": "Class (Background)",
-         "level": N,
-         "hp": {"current": N, "max": N, "temp": 0},
-         "ac": N,
-         "speed": 30,
-         "hit_dice": {"max": N, "remaining": N, "die": "d8"},
-         "xp": {"current": N, "next": N},
-         "conditions": [],
-         "concentration": null,
-         "inspiration": 0,
-         "spell_slots": {},
-         "sheet": {
-           "attacks": [{"name":"...","bonus":"+N","damage":"...","type":"...","notes":"..."}],
-           "features": [{"name":"Feature 1","text":"Description of what it does."},{"name":"Feature 2","text":"Description."}],
-           "inventory": ["Item 1", "Item 2"]
-         }
-       }
-     ]
-   }'
-   ```
-
-   For casters, add `"spells": {"cantrips":["..."],"level1":["..."]}` inside `sheet`. Omit for non-casters.
-
-   **Inspiration:** read from `state.md → ## Current Situation → Party status`. Set `"inspiration": 1` (or `true`) if the character has it, `0` if not. Inspiration is NOT reset by a long rest — it persists until spent. Must be explicitly tracked in the party status line at `/dm:dnd save` (e.g., `Mara: Inspiration ✓`) and loaded at `/dm:dnd load`. Use `push_stats.py --player <name> --inspiration true/false` for mid-session updates.
-
-   `--replace-players` clears stale characters from previous campaigns. Build the JSON from the character file — every field above is required for the card and sheet tabs to render correctly.
-
-   Also push `--world-time`, `--factions`, and `--quests` in the **same** `push_stats.py` call as the player JSON to avoid race conditions where the display server receives a partial update. Combine all into one invocation:
-
-   ```bash
-   python3 ${CLAUDE_SKILL_DIR}/display/push_stats.py --replace-players \
-     --json '{...players...}' \
-     --world-time '{...}' \
-     --factions '[...]' \
-     --quests '[...]'
-   ```
-
-   Faction JSON structure — **`standing` is required**:
-   ```json
-   [{"name":"Pale Court","standing":"Allied"},{"name":"The Kept","standing":"Hostile"}]
-   ```
-   `standing` values: `Allied`, `Friendly`, `Neutral`, `Suspicious`, `Hostile`. If the field is omitted, `dnd-display-app.py` defaults it to `"Neutral"` and logs a warning to stderr — but always include it explicitly. Map prose from `state.md` to exact values (e.g. "deep ally" → `"Allied"`, "active hostile" → `"Hostile"`). Use `[]` to clear.
-
-   The faction panel only appears when at least one faction is present — do not skip this push.
-
-   Quest JSON structure:
-   ```json
-   [{"name":"The Missing Shipment","status":"resolved"},{"name":"Keth the Collector","status":"threat"}]
-   ```
-   Quest `status` values: `active` (amber), `threat` (red), `resolved` (green), `failed` (muted). Use `[]` to clear all quests:
-   ```bash
-   python3 ${CLAUDE_SKILL_DIR}/display/push_stats.py --quests '[...]'
-   ```
-   The quest panel only appears when at least one quest is present — do not skip this push.
-7. **Pull scene-context from the campaign graph.** Always run, even if you suspect `graph.json` doesn't exist — the script exits cleanly with a notice when uninitialized.
+6. **Pull scene-context from the campaign graph.** Always run, even if you suspect `graph.json` doesn't exist — the script exits cleanly with a notice when uninitialized.
    ```bash
    python3 ${CLAUDE_SKILL_DIR}/scripts/campaign_graph.py scene-context \
      --campaign <campaign-name> \
@@ -210,7 +120,7 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 
    Output is a focused subgraph (nodes by type + relationships block). **Internalize this subgraph before delivering the recap** — it is the authoritative source for who-relates-to-whom in the current scene. Do not re-read `npcs-full.md` for relationships you can answer from the subgraph.
 
-   If output reads `# graph not initialized` — graph hasn't been seeded for this campaign yet. **Graph init is a hard requirement, not deferrable.** The continuity-archive compression rule (step 6 below + `/dm:dnd save`) assumes graph.json is present and canonical for relational state; deferring init creates state-archive drift that compounds session-over-session. Run the init flow before delivering the recap:
+   If output reads `# graph not initialized` — graph hasn't been seeded for this campaign yet. **Graph init is a hard requirement, not deferrable.** The continuity-archive compression rule (see `/dm:dnd save`) assumes graph.json is present and canonical for relational state; deferring init creates state-archive drift that compounds session-over-session. Run the init flow before delivering the recap:
 
    1. **Detect legacy.** A campaign is "legacy" if any of: `Session count > 1` in state.md header, OR `## Continuity Archive` has at least one `### Session N` entry, OR session-log.md is > 100 lines. A freshly-created campaign at `/dm:dnd new` time fails all three signals — do NOT classify it as legacy.
 
@@ -234,10 +144,10 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 
       For fresh (non-legacy) campaigns: skip the offer entirely — there's nothing to compress yet, and the going-forward rule covers all future entries.
 
-   6. Re-run scene-context (now populated). Then proceed to step 6 (recap).
+   6. Re-run scene-context (now populated). Then proceed to step 7 (recap).
 
-8. Deliver one in-character paragraph recapping current situation — where the party is, what's at stake, what was last happening.
-9. Enter active DM mode — no `/dm:dnd` prefix needed from this point.
+7. Deliver one in-character paragraph recapping current situation — where the party is, what's at stake, what was last happening.
+8. Enter active DM mode — no `/dm:dnd` prefix needed from this point.
 
 ---
 
@@ -450,14 +360,10 @@ Then update `## Faction Moves` in state.md: for each active faction, answer *"wh
 **Faction stances** must **cite a deed** appended to the `## Deeds` ledger in state.md
 (`<beat id or session number> — <faction> — <what the party did> — <+/−/neutral>`).
 
-**Session tail archive:** `dnd-display-app.py` continuously writes `~/.claude/dnd/campaigns/<name>/session_tail.json` — campaign-specific path, atomic-write, skip-on-empty guarded (since 2026-05-01). At save time:
+**Session tail archive:** at save time, write the tail files to the campaign dir — they are the compaction-survival record of the session's final stretch:
 
-1. Verify the campaign-side file exists and is non-empty:
-   ```bash
-   bash ${CLAUDE_SKILL_DIR}/display/verify_tail.sh <campaign-name>
-   ```
-   The script returns 0 if the tail is healthy (non-empty + valid JSON list), 1 if missing/empty/corrupt. If it returns 1, the tail is unsafe to rely on for next session's replay — **write a canonical replacement directly to the campaign path** with this session's 5–8 most important narrative beats as a JSON list of `{"text": "...", "_camp": "<name>"}` entries (no display call needed; the display may already be dead). Use the `tools/write_canonical_tail.py` helper.
-2. Also write `~/.claude/dnd/campaigns/<name>/session-tail.md` (human-readable snapshot — companion to the JSON, used as fallback during /dm:dnd load if JSON read fails).
+1. Write `~/.claude/dnd/campaigns/<name>/session_tail.json` — this session's 5–8 most important narrative beats as a JSON list of `{"text": "...", "_camp": "<name>"}` entries.
+2. Also write `~/.claude/dnd/campaigns/<name>/session-tail.md` (human-readable snapshot — companion to the JSON, used as fallback if the JSON read fails).
 
 **Session log archival (run on every save after session count > 3):**
 session-log.md keeps only the **2 most recent full session entries**. Older entries move to `session-log-archive.md` (append, never delete). Before archiving each entry, extract a 3–5 bullet continuity summary and write it to `## Continuity Archive` in state.md. Format:
@@ -525,17 +431,7 @@ If `graph.json` doesn't exist yet for this campaign, skip the sweep entirely (no
         - **Did not land — pressure absorbed without consequence** → the beat is overdue and its current shape no longer fits. **Run `/dm:dnd arc revise` immediately**; do not just update `steering_notes`. The beat's `what_changes` was event-shaped (something specific happens) when it should be consequence-shaped (something fundamentally different is true) — revise both `what_changes` and `world_pressure` to fit a path that DOES land. The committed shape bends; it does not break.
         - **Pressure not yet delivered** → leave beat alone; expected to deliver next session.
       iv. Update `steering_notes` for the next outstanding beat with the *consequence shape* expected, not the specific event.
-   f. **Tail verification (added 2026-05-01):** before killing the display, verify the campaign-side `session_tail.json` is healthy:
-      ```bash
-      bash ${CLAUDE_SKILL_DIR}/display/verify_tail.sh <campaign-name>
-      ```
-      Exit 0 = healthy. Exit 1 = missing/empty/corrupt → write a canonical replacement to `~/.claude/dnd/campaigns/<name>/session_tail.json` from session context (5–8 entries, each `{"text": "...", "_camp": "<name>"}`) BEFORE the display kill — once the display is dead, only the file matters. The display's own `_persist_tail` has skip-on-empty + atomic-write guards, but the backstop ensures a worst-case file state is impossible.
-2. Stop the display (always — even if `_display_running` was unclear):
-   ```bash
-   kill $(cat ${CLAUDE_SKILL_DIR}/display/app.pid 2>/dev/null) 2>/dev/null
-   rm -f ${CLAUDE_SKILL_DIR}/display/app.pid
-   ```
-3. **Post-kill tail re-verification:** run `verify_tail.sh` once more after the kill. If it now reports unhealthy (file got truncated by a final write race), restore from the canonical version written in step 1f.
+   f. **Tail verification:** confirm the campaign-side `session_tail.json` was written at save (non-empty, valid JSON list). If missing or corrupt, write it now from session context (5–8 entries, each `{"text": "...", "_camp": "<name>"}`).
 
 ---
 
@@ -545,13 +441,7 @@ Exit the current session **without saving any state changes**. Use this when an 
 
 1. Confirm: *"Abandon session? All unsaved state changes will be lost. Type 'yes' to confirm."* — do not proceed until confirmed.
 2. Do **NOT** write to state.md, world.md, npcs.md, session-log.md, or any character files.
-3. Clear the autorun flag in memory (`autorun: false`) so the wait loop does not restart.
-4. If `_display_running = true`, stop the display:
-   ```bash
-   kill $(cat ${CLAUDE_SKILL_DIR}/display/app.pid 2>/dev/null) 2>/dev/null
-   rm -f ${CLAUDE_SKILL_DIR}/display/app.pid
-   ```
-5. Confirm: *"Session abandoned. No files were written. Run `/dm:dnd load <campaign>` to reload from the last saved state."*
+3. Confirm: *"Session abandoned. No files were written. Run `/dm:dnd load <campaign>` to reload from the last saved state."*
 
 ---
 
@@ -586,14 +476,6 @@ Pull the latest skill changes from `origin/main`.
 - `--check` → `python3 ${CLAUDE_SKILL_DIR}/scripts/update_skill.py --check` — report status without pulling.
 - The script refuses to update if the working tree is dirty and uses `--ff-only` so it never silently merges divergent history.
 - After a successful pull, remind the user to restart Claude Code so the new `SKILL.md` and `SKILL-commands.md` are reloaded.
-
----
-
-## `/dm:dnd display [start|stop|status]`
-- `start` → ask LAN mode [y/n]; run `bash ${CLAUDE_SKILL_DIR}/display/start-display.sh [--lan]`; print URL(s)
-- `stop` → `kill $(cat ${CLAUDE_SKILL_DIR}/display/app.pid) 2>/dev/null && rm -f ${CLAUDE_SKILL_DIR}/display/app.pid`
-- `status` → `curl -sk $(cat ${CLAUDE_SKILL_DIR}/display/.scheme 2>/dev/null || echo http)://localhost:5001/ping` — reachable or unreachable
-- No argument → print quick-start instructions
 
 ---
 
@@ -747,22 +629,15 @@ Run `scripts/dice.py <notation>`. Display output verbatim. Examples: `d20`, `2d6
 
 ## `/dm:dnd combat start`
 1. Identify combatants; collect name, DEX mod, HP, AC, type (pc/npc) for each.
-2. Run `combat.py init '<JSON>'` — auto-roll initiative for every combatant including PCs. Display tracker and per-combatant roll breakdown.
-3. Send initiative to display:
-   ```bash
-   python3 ${CLAUDE_SKILL_DIR}/display/send.py << 'DNDEND'
+2. Run `combat.py init '<JSON>'` — auto-roll initiative for every combatant including PCs. Show the tracker and per-combatant roll breakdown in chat:
+   ```
    ⚔️ Initiative — Round 1
    [Name]: d20(N) + DEX = total
    Turn order: [Name] → [Name] → ...
-   DNDEND
    ```
-4. Push turn order to stats sidebar:
-   ```bash
-   python3 ${CLAUDE_SKILL_DIR}/display/push_stats.py --turn-order '{"order":[...],"current":"FirstName","round":1}'
-   ```
-5. Save STATE_JSON to `state.md` under `## Active Combat`.
-6. Step through turns using the per-turn sequence (in SKILL.md Active DM Mode).
-7. On combat end: update HP in character sheets, clear `## Active Combat`, `push_stats.py --turn-clear`, narrate aftermath, run `tracker.py -c <campaign> clear`.
+3. Save STATE_JSON to `state.md` under `## Active Combat`.
+4. Step through turns using the per-turn sequence (in SKILL.md Active DM Mode).
+5. On combat end: update HP in character sheets, clear `## Active Combat`, narrate aftermath, run `tracker.py -c <campaign> clear`.
 
 **No XP.** This is a milestone-leveling fork — combat end awards no XP. Leveling happens only at
 `/dm:dnd beat complete`. Narrate loot/consequences in the aftermath send; do not send an XP block.
@@ -771,17 +646,16 @@ Run `scripts/dice.py <notation>`. Display output verbatim. Examples: `d20`, `2d6
 
 ## `/dm:dnd rest <short|long>`
 **Short (1 hour):**
-1. Ask how many Hit Dice the player spends. Roll `d[hit-die] + CON mod` per die via `dice.py`. Update HP, push `push_stats.py --player NAME --hp`.
-2. Note class features that recharge (e.g. Second Wind → `push_stats.py --player NAME --second-wind true`).
+1. Ask how many Hit Dice the player spends. Roll `d[hit-die] + CON mod` per die via `dice.py`. Update HP in the character sheet.
+2. Note class features that recharge (e.g. Second Wind).
 3. Advance time: `calendar.py -c <campaign> rest short`
 4. Clear encounter conditions: `tracker.py -c <campaign> clear` (concentration may persist — ask)
 
 **Long (8 hours):**
 1. Restore all HP, half max Hit Dice (round up), all spell slots, most class features. Update sheet.
-2. Push: `push_stats.py --player NAME --hp <max> <max>` and `--second-wind true`.
-3. Advance time: `calendar.py -c <campaign> rest long`
-4. Clear all tracker state: `tracker.py -c <campaign> clear --all`
-5. Update `state.md` in-world date to match calendar output.
+2. Advance time: `calendar.py -c <campaign> rest long`
+3. Clear all tracker state: `tracker.py -c <campaign> clear --all`
+4. Update `state.md` in-world date to match calendar output.
 
 ---
 
@@ -932,37 +806,6 @@ Diff the prior snapshot against the current state and print a one-paragraph plai
 
 ## `/dm:dnd tutor on` / `/dm:dnd tutor off`
 Toggle tutor/learning mode. Write `tutor_mode: true/false` to `state.md` under `## Session Flags`. Session-scoped — does not persist to next `/dm:dnd load` unless explicitly set again. (Full tutor mode behavior is in SKILL.md.)
-
----
-
-## `/dm:dnd autorun on` / `/dm:dnd autorun off`
-
-Toggle autorun (taxi) mode — Claude drives the turn loop automatically when players submit via the display companion. No PTY wrapper required.
-
-**On:**
-1. Write `autorun: true` to `state.md → ## Session Flags`.
-2. **Check Bash permissions** — read `~/.claude/settings.json`. If `permissions.allow` does not include `"Bash"` (or `"Bash(*)"` or similar), add it automatically:
-   - Read the file, merge `"Bash"` into `permissions.allow`, write it back.
-   - Tell the DM: *"Added Bash to permissions.allow in ~/.claude/settings.json — autorun won't prompt for each wait. Restart this session for it to take effect if it doesn't immediately."*
-   - If it was already present, skip silently.
-3. Confirm to the DM: *"Autorun enabled. Players submit via the display; I'll pick up each action automatically. Send me a message at any time to take control of a turn."*
-4. If the user specified an interval (e.g. `/dm:dnd autorun on 45`), write `autorun_interval: 45` to `state.md → ## Session Flags`. Default is 60 if omitted.
-5. Immediately enter the autorun wait (see SKILL.md for the Bash block). If there's already something in `.input_queue`, pick it up as the current turn's player action.
-
-The display shows a pie-clock countdown draining from full to empty over the interval. Green pulse = actively waiting. Configurable via `autorun_interval: N` in state.md (default 60 seconds).
-
-**Off:**
-1. Write `autorun: false` (or remove the line) to `state.md → ## Session Flags`.
-2. Confirm: *"Autorun disabled. Back to manual mode — press Enter or tell me to submit when players are ready."*
-3. Do NOT start the autorun wait after this response.
-
-**Check on `/dm:dnd load`:** If `autorun: true` is present in state.md, tell the DM autorun is active and begin the wait loop after the recap paragraph.
-
-**When NOT to run the autorun wait (even if flag is set):**
-- Mid-combat, resolving a specific combatant's turn
-- Waiting on a player dice roll result
-- The DM just sent a message (they're driving this turn)
-- During `/dm:dnd save`, `/dm:dnd end`, or any command response
 
 ---
 

@@ -2,8 +2,7 @@
 """
 tracker.py — session-state tracker for conditions, concentration, effects, and death saves
 
-Stores state per-campaign. Outputs formatted status to terminal and pushes
-condition updates to the display companion sidebar (via push_stats.py).
+Stores state per-campaign. Outputs formatted status to the terminal.
 
 Usage:
     CAMPAIGN=my-campaign
@@ -39,35 +38,10 @@ Usage:
 
 import json
 import os
-import sys
-import subprocess
 import argparse
 import time
 from datetime import datetime, timezone
-from paths import find_campaign as _find_campaign, display_dir as _display_dir
-
-PUSH_STATS = str(_display_dir() / "push_stats.py")
-SEND_PY    = str(_display_dir() / "send.py")
-
-# 5e condition colours for display pills
-CONDITION_COLOURS = {
-    "unconscious":    "danger",
-    "paralyzed":      "danger",
-    "petrified":      "danger",
-    "stunned":        "danger",
-    "incapacitated":  "warn",
-    "frightened":     "warn",
-    "poisoned":       "warn",
-    "charmed":        "warn",
-    "exhausted":      "warn",
-    "grappled":       "info",
-    "restrained":     "info",
-    "prone":          "info",
-    "blinded":        "info",
-    "deafened":       "info",
-    "invisible":      "buff",
-}
-
+from paths import find_campaign as _find_campaign
 
 def _state_path(campaign: str) -> str:
     d = str(_find_campaign(campaign))
@@ -152,31 +126,6 @@ def _fmt_effect(eff: dict) -> str:
     return "∞"
 
 
-def _push_conditions(entity_name: str, conditions: list[str]) -> None:
-    """Push condition list to display sidebar via push_stats.py."""
-    cond_str = ",".join(conditions)
-    try:
-        subprocess.run(
-            [sys.executable, PUSH_STATS, "--player", entity_name,
-             "--conditions", cond_str],
-            capture_output=True, timeout=3,
-        )
-    except Exception:
-        pass  # Display not running — fail silently
-
-
-def _send_announce(msg: str) -> None:
-    """Send a one-line announcement to the display companion."""
-    try:
-        proc = subprocess.Popen(
-            [sys.executable, SEND_PY, "--dice"],
-            stdin=subprocess.PIPE, capture_output=True, timeout=3,
-        )
-        proc.communicate(input=msg.encode())
-    except Exception:
-        pass
-
-
 # ─── Commands ────────────────────────────────────────────────────────────────
 
 def cmd_effect(campaign: str, action: str, entity_name: str,
@@ -205,7 +154,6 @@ def cmd_effect(campaign: str, action: str, entity_name: str,
             ent["concentration"] = spell
             if old and old.lower() != spell.lower():
                 print(f"  {entity_name}: dropped concentration on '{old}'")
-            _send_announce(f"{entity_name} — concentrating on {spell}")
 
         rem = _fmt_effect(effect)
         conc_tag = " [conc]" if is_conc else ""
@@ -226,10 +174,8 @@ def cmd_effect(campaign: str, action: str, entity_name: str,
         was_conc = any(e.get("concentration") for e in removed)
         if was_conc and (ent.get("concentration") or "").lower() == spell.lower():
             ent["concentration"] = None
-            _send_announce(f"{entity_name} — concentration on {spell} ends")
             print(f"  - {entity_name}: {spell} ends (concentration broken)")
         else:
-            _send_announce(f"{entity_name} — {spell} ends")
             print(f"  - {entity_name}: {spell} ends")
         _save(campaign, state)
 
@@ -276,10 +222,8 @@ def cmd_effect(campaign: str, action: str, entity_name: str,
             spell_name = e["name"]
             if was_conc and (ent.get("concentration") or "").lower() == spell_name.lower():
                 ent["concentration"] = None
-                _send_announce(f"{entity_name} — {spell_name} expired (concentration ends)")
                 print(f"  ! {entity_name}: {spell_name} EXPIRED — concentration ends")
             else:
-                _send_announce(f"{entity_name} — {spell_name} expired")
                 print(f"  ! {entity_name}: {spell_name} EXPIRED")
 
         _save(campaign, state)
@@ -297,8 +241,6 @@ def cmd_condition(campaign: str, entity_name: str, action: str, condition: str =
         cond = condition.lower()
         if cond not in conds:
             conds.append(cond)
-            _push_conditions(entity_name, conds)
-            _send_announce(f"{entity_name} → {cond.capitalize()}")
             print(f"  + {entity_name}: {cond}")
         else:
             print(f"  (already has {cond})")
@@ -307,17 +249,12 @@ def cmd_condition(campaign: str, entity_name: str, action: str, condition: str =
         cond = condition.lower()
         if cond in conds:
             conds.remove(cond)
-            _push_conditions(entity_name, conds)
-            _send_announce(f"{entity_name} — {cond.capitalize()} ends")
             print(f"  - {entity_name}: {cond} removed")
         else:
             print(f"  ({entity_name} does not have {cond})")
 
     elif action == "clear":
-        if conds:
-            _send_announce(f"{entity_name} — all conditions cleared")
         conds.clear()
-        _push_conditions(entity_name, [])
         print(f"  {entity_name}: conditions cleared")
 
     ent["conditions"] = conds
@@ -332,7 +269,6 @@ def cmd_concentrate(campaign: str, entity_name: str, spell_or_break: str) -> Non
         old = ent.get("concentration")
         ent["concentration"] = None
         if old:
-            _send_announce(f"{entity_name} — concentration on {old} broken")
             print(f"  {entity_name}: concentration on '{old}' broken")
         else:
             print(f"  {entity_name}: was not concentrating")
@@ -341,10 +277,8 @@ def cmd_concentrate(campaign: str, entity_name: str, spell_or_break: str) -> Non
         old   = ent.get("concentration")
         ent["concentration"] = spell
         if old and old != spell:
-            _send_announce(f"{entity_name} — {old} ends, concentrating on {spell}")
             print(f"  {entity_name}: dropped '{old}', now concentrating on '{spell}'")
         else:
-            _send_announce(f"{entity_name} — concentrating on {spell}")
             print(f"  {entity_name}: concentrating on '{spell}'")
 
     _save(campaign, state)
@@ -360,7 +294,6 @@ def cmd_saves(campaign: str, entity_name: str, action: str) -> None:
         if saves["successes"] >= 3:
             saves["stable"] = True
             msg = f"{entity_name} is STABLE (3 successes)"
-            _send_announce(f"☑ {msg}")
             print(f"  ☑ {msg}")
         else:
             print(f"  {entity_name}: {saves['successes']} success(es), {saves['failures']} failure(s)")
@@ -369,14 +302,12 @@ def cmd_saves(campaign: str, entity_name: str, action: str) -> None:
         saves["failures"] = min(3, saves["failures"] + 1)
         if saves["failures"] >= 3:
             msg = f"{entity_name} — 3 FAILURES: character is DEAD"
-            _send_announce(f"✗ {msg}")
             print(f"  ✗ {msg}")
         else:
             print(f"  {entity_name}: {saves['successes']} success(es), {saves['failures']} failure(s)")
 
     elif action == "stable":
         saves["stable"] = True
-        _send_announce(f"{entity_name} stabilised")
         print(f"  {entity_name}: marked stable")
 
     elif action == "reset":
@@ -436,7 +367,6 @@ def cmd_clear(campaign: str, clear_all: bool = False) -> None:
         ent["conditions"] = []
         ent["concentration"] = None
         ent["effects"] = []
-        _push_conditions(ent["name"], [])
         if clear_all:
             ent["death_saves"] = {"successes": 0, "failures": 0, "stable": False}
     _save(campaign, state)

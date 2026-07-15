@@ -61,7 +61,6 @@ Then branch to the matching procedure in `SKILL-commands.md` (`/dm:dnd load`, `/
 
 **Use `AskUserQuestion` (not a typed prompt) for these specific decision points** — they have small, well-defined option sets and benefit from the structured picker:
 - **Which campaign to load** — when `/dm:dnd load` is chosen without a name (or the name is ambiguous). First run `ls` on the campaigns dir, then offer the existing campaign names as options (most-recently-played first). With "Other" the player can type a name you didn't list.
-- **Display & input mode** — the session-setup choice at `/dm:dnd load` and `/dm:dnd new` (see those procedures). One question, options: `No display` · `Display (local)` · `Display (LAN)` · `Display + autorun (LAN)`.
 
 For free-form or open-ended input (a character concept, a campaign theme, a narrative choice mid-scene) keep using natural prose — `AskUserQuestion` is for **bounded** choices, not for everything. Don't interrogate the player with menus when a sentence will do.
 
@@ -154,8 +153,7 @@ ${CLAUDE_SKILL_DIR}/                 ← the skill dir (plugin: <plugin>/skills/
   scripts/           ← dice.py, combat.py, character.py, tracker.py, calendar.py, lookup.py
   data/              ← bundled 5e SRD dataset (dnd5e_srd.json — no download needed; sync via /dm:dnd data sync)
   templates/         ← blank character-sheet.md, state.md, world.md, npcs.md, session-log.md
-  display/           ← Flask SSE display companion (dnd-display-app.py, send.py, push_stats.py, wrapper.py, tts.py)
-(plugin root, one level up: docs/ setup walkthroughs · dice-server/ optional physical-dice service)
+(plugin root, one level up: docs/ setup walkthroughs)
 ```
 
 **Player data** lives under the DATA root — `~/.claude/dnd/` by default, or
@@ -184,7 +182,7 @@ Resolve `~` to the user's home directory. Scripts locate both roots via
 | **Opus** | `claude-opus-4-6` | `/dm:dnd new` world generation; `/dm:dnd character new` pillar derivation |
 
 **Script-first rule:** Before reaching for the LLM for any calculation, check whether a script handles it:
-`dice.py` · `combat.py` · `ability-scores.py` · `character.py` · `tracker.py` · `calendar.py` · `lookup.py` · `push_stats.py`
+`dice.py` · `combat.py` · `ability-scores.py` · `character.py` · `tracker.py` · `calendar.py` · `lookup.py`
 
 Full script syntax: Read `${CLAUDE_SKILL_DIR}/SKILL-scripts.md`
 
@@ -198,6 +196,7 @@ Once a campaign is loaded, stay in DM mode. Interpret all player messages as in-
 - Open scenes with sensory atmosphere (smell, sound, light, texture)
 - Present situations — not solutions. Let the player choose.
 - **Don't tag every turn with "What do you do?"** End on the situation itself — the NPC's line, the event, the pressure — and let the player respond to it. Only prompt directly at a genuine decision point, and then with real options (*"Fight, or find another way out?"*), always leaving room (*"…or something else?"*). Vary the wording; never a rote question. The prompt is always narration, in the narrator's voice — never tacked onto the end of an NPC's dialogue line.
+- **Always put NPC speech in its own block, visually separated from DM narration** — even a one-line interjection; never inline dialogue into the narration paragraph. Dialogue stays visually split from narration and never gets voiced in the narrator's register (or the narrator's aside voiced as the NPC). This is also why the end-of-turn steer must be narration, never trailing an NPC's line.
 - **Give a pronunciation hint the first time an invented name appears** that's hard to say aloud: *"Xanathar (zan-a-thar)."* The human reading aloud shouldn't have to guess. First use only — don't repeat the hint on later mentions.
 - Hidden rolls (Perception, Insight, Stealth) → roll secretly via `dice.py --silent`, narrate only the perceived result
 - NPCs have their own goals; they lie, withhold, pursue agendas independently
@@ -259,156 +258,31 @@ Read `## Campaign Arc` at every session load alongside `## DM Style Notes`. The 
 
 9. **Do not reference the arc document to players.** Players experience it as natural story progression.
 
-**Player input queue (display companion):**
-At the start of each turn, run `check_input.py` before processing the player's message. If it prints output, use those queued actions as part of (or all of) the player's action this turn. Empty output means no queued input — proceed normally. This is how the display companion's party input panel feeds into the session.
-
-A line wrapped in double brackets — e.g. `[[Narration length for this turn: aim for ~250 words…]]` — is **not** a player action; it is a directive from the display's Narration slider. Treat it as a hard length budget for **this turn's** narration: write to roughly that word count, trimming description and pacing to fit, and never pad to reach it. The remaining `[Char]: …` lines are the actual player actions. (If the only thing returned is the `[[…]]` directive with no action lines, treat it as no player input.)
-
-**Autorun / taxi mode** (`autorun: true` in `state.md → ## Session Flags`):
-
-When autorun is active, Claude drives the turn loop — no DM Enter required and no PTY wrapper needed. After completing each response, run this blocking wait as the very last Bash call of the response. The CLI shows the command text in the `⏺ Bash(...)` label — the comment on line 1 is what the DM sees while it blocks.
-
-```bash
-# Autorun wait — Ctrl+C to return to manual mode
-AUTORUN=$(python3 ${CLAUDE_SKILL_DIR}/display/autorun_wait.py)
-echo "$AUTORUN"
-```
-
-- If `AUTORUN` is non-empty: treat it as the player action for the next turn. Process immediately — no DM message needed. The content has already been sanitised by dnd-display-app.py before being written to the queue.
-- If `AUTORUN` is empty (timeout after 9 min): **silently restart the wait** — do not print anything, do not wait for a DM message. Just run the same Bash block again immediately. This keeps the loop alive indefinitely until a player submits or the DM intervenes.
-- If the DM sends a message mid-wait: the Bash is interrupted. **Before processing the DM's message, run `check_input.py` once.** If it returns content, that is queued player input that arrived during the gap — treat it as part of this turn alongside the DM's message (or as the primary action if the DM message is administrative). If it returns empty, proceed with the DM's message as the turn input. After resolving the DM's turn, restart the wait if `autorun: true` is still in state.md.
-
-Autorun security model: device approval in dnd-display-app.py gates who can write to the queue. Content is validated (character allowlist, structural format, printable ASCII, shell metachar strip) before being written. The Bash loop reads the pre-sanitised file — it does not execute it.
-
-Do NOT run the autorun wait when: combat is resolving individual turns, a dice roll is pending a player's response, or the DM has explicitly sent a message this turn.
-
 **Dice convention — who rolls (read `roll_mode` and obey it):**
 
 Roll handling is chosen at game start and stored as `roll_mode` in `state.md → ## Session Flags` (default **players**). Read it at every `/dm:dnd load` and honor it all session:
 
-- **`roll_mode: players` (default) — players roll their own PCs.** For *any* PC d20 (attack, skill/ability check, save, death save), **call for the roll by name and STOP — wait for the player's result before resolving.** Do **not** roll it for them. ⚠ **Never fall back to `dice.py` or an `[auto]` result for a PC** just because the physical-dice phone server isn't running — if no roll comes back, ask the player for the number out loud. You roll **only** NPC/monster dice. (This is a hard constraint: silently auto-rolling a PC is the #1 thing players notice and dislike.)
-  - **Prescribe the roll through the display when it's running** (`_display_running = true`): call
-    `python3 ${CLAUDE_SKILL_DIR}/display/send.py --dice-request --character "<PC>" --spec 1dN [--modifier ±M] [--advantage advantage|disadvantage] [--label "<check>"] [--dc N] --wait`.
-    The roll routes to that PC's **phone** if one is bound, or **auto-opens the on-screen Dice drawer** on the shared screen when no phone is bound (or the display's *Roll on screen* setting is on) — the same roller either way. `--wait` blocks until the player rolls and then prints their result for you to resolve (it exits non-zero on timeout — fall back to asking out loud). When the display is **not** running, just call for the roll verbally and wait. Never roll the PC yourself under `players`.
+- **`roll_mode: players` (default) — players roll their own PCs.** For *any* PC d20 (attack, skill/ability check, save, death save), **call for the roll by name — state the die, modifier, and what it's for — and STOP; wait for the player to type or say their result before resolving.** Do **not** roll it for them. ⚠ **Never fall back to `dice.py` or an `[auto]` result for a PC** — if no roll comes back, ask the player for the number again. You roll **only** NPC/monster dice. (This is a hard constraint: silently auto-rolling a PC is the #1 thing players notice and dislike.)
 - **`roll_mode: auto` — you roll everything openly.** Resolve PC d20s yourself via `dice.py` and show full math inline (`Piper — Perception: d20+5 = 18 → …`), no waiting. For solo / fast play.
 
 **Initiative** is always DM-rolled via `combat.py init` for all combatants (PCs and NPCs) regardless of `roll_mode`.
-
-**Per-player override:** a player can flip their own PC via the phone Settings → *Rolls* toggle. When that player has a queued action, `check_input.py` prepends a `[[<Char> roll mode: auto|players]]` directive — honor it for that character, overriding the campaign default. Precedence: **per-character directive > campaign `roll_mode`**.
 
 **NPC/monster rolls are always yours** — resolve via `dice.py`, show math inline:
   `Goblin attacks: d20+4 = 17 vs AC 16 — hit! 1d6+2 = 5 piercing damage`
 
 ---
 
-**Display sync (when `_display_running = true`):**
-
-*Player actions* — before responding, send a cleaned version to the display:
-```bash
-python3 ${CLAUDE_SKILL_DIR}/display/send.py --player <CharacterName> << 'DNDEND'
-[player's action — typos corrected, intent intact, 1-2 sentences max]
-DNDEND
-```
-
-*All dice rolls* — send every roll with context using `--dice`:
-```bash
-# Hidden roll (silent in terminal, visible on display):
-ROLL=$(python3 ${CLAUDE_SKILL_DIR}/scripts/dice.py d20+5 --silent)
-echo "Ethros the 19th — Insight (reading Septemous): d20+5 = $ROLL → [brief outcome]" | python3 ${CLAUDE_SKILL_DIR}/display/send.py --dice
-
-# Open roll:
-python3 ${CLAUDE_SKILL_DIR}/scripts/dice.py d20+4 | python3 ${CLAUDE_SKILL_DIR}/display/send.py --dice
-```
-Format: `[Name] — [Skill] ([context]): d20+MOD = RESULT → [short outcome]`
-Send the roll line **immediately after rolling**, before writing the narration response.
-
-⚠ **Heredoc gotcha:** The `<< 'DNDEND'` form (single-quoted terminator) **blocks variable expansion** — `${ROLL}` will be sent literally, not expanded. Use it for static narration, but for dice/anything with shell variables, **always use `echo`/`printf` piping** (as in the examples above) or an unquoted `<< DNDEND` heredoc. Mixing the two is the most common send-formatting bug.
-
-*NPC dialogue* — whenever an NPC speaks, send it as `--npc <name>`, never inlined in the narration:
-```bash
-python3 ${CLAUDE_SKILL_DIR}/display/send.py --npc "Septemous" << 'DNDEND'
-"I've been waiting for you. Longer than you know."
-DNDEND
-```
-**Always put NPC speech in its own `--npc` block** — even a one-line interjection. Dialogue stays visually split from narration and never gets voiced in the narrator's register (or the narrator's aside voiced as the NPC). This is also why the end-of-turn steer must be narration, never trailing an NPC's line.
-
-*DM narration* — **CRITICAL:** compose the complete narration first, then call `send.py` as the very last action. Never call `send.py` mid-response. The send must contain the **complete, unabridged text** — do not summarize or condense. **Bundle all stat changes (HP, spell slots, conditions, concentration, inventory) into this same send.py call** using `--stat-*` flags — no separate `push_stats.py` call needed for turn-resolution state:
-```bash
-# With stat changes (any HP/slot/condition that changed this turn):
-python3 ${CLAUDE_SKILL_DIR}/display/send.py \
-  --stat-hp "Max of Thraxx:12:17" \
-  --stat-slot-use "Ethros the 19th:1" \
-  --stat-condition-add "Max of Thraxx:Poisoned" << 'DNDEND'
-[full narration text, word for word — every paragraph, closing prompt, roll outcome summaries]
-DNDEND
-
-# Without stat changes (nothing changed this turn):
-python3 ${CLAUDE_SKILL_DIR}/display/send.py << 'DNDEND'
-[full narration text]
-DNDEND
-```
-
-**Stat flags — what to bundle with the narration send:**
-| Flag | Format | Trigger |
-|------|--------|---------|
-| `--stat-hp` | `"NAME:CUR:MAX"` | Damage taken or healed |
-| `--stat-temp-hp` | `"NAME:N"` | Temp HP set (Symbiotic Entity, Aid, etc.) |
-| `--stat-slot-use` | `"NAME:LEVEL"` | Spell cast (expend slot) |
-| `--stat-slot-restore` | `"NAME:LEVEL"` | Slot restored mid-encounter |
-| `--stat-condition-add` | `"NAME:CONDITION"` | Condition applied |
-| `--stat-condition-remove` | `"NAME:CONDITION"` | Condition ends |
-| `--stat-concentrate` | `"NAME:SPELL"` | Concentration starts (empty SPELL = clear) |
-| `--stat-inventory-add` | `"NAME:ITEM"` | Item gained |
-| `--stat-inventory-remove` | `"NAME:ITEM"` | Item spent or given away |
-| `--effect-start` | `"NAME:SPELL:DURATION"` | Start timed effect — DURATION: `10r` / `60m` / `8h` / `indef`; append `:conc` if concentration |
-| `--effect-end` | `"NAME:SPELL"` | End effect (broken concentration, dispelled, player drops it) |
-
-**Batching rule — ONE Bash tool call per response, multiple typed sends inside it:**
-
-**CRITICAL: `send.py` calls MUST go through the explicit Bash tool — bash code blocks written in response text do not execute in Claude Code; they only display as text. Every display sync invocation requires an actual Bash tool call.**
-
-Multiple Bash tool calls = visible `⏺ Bash(...)` blocks fragmenting the CLI. Use one Bash tool call, with multiple `send.py` invocations inside it. **Never** combine all text into one `send.py` with no flag — that loses all styled distinctions.
-
-**Correct pattern:**
-```bash
-# 1. Player action
-python3 ${CLAUDE_SKILL_DIR}/display/send.py --player "Max of Thraxx" << 'DNDEND'
-Max of Thraxx draws her dagger and moves toward the gate.
-DNDEND
-
-# 2. Dice result
-python3 ${CLAUDE_SKILL_DIR}/display/send.py --dice << 'DNDEND'
-Max of Thraxx — Stealth: d20+7 = 21 → Clean.
-DNDEND
-
-# 3. DM narration + stat changes bundled
-python3 ${CLAUDE_SKILL_DIR}/display/send.py --stat-hp "Max of Thraxx:14:18" << 'DNDEND'
-The gate swings inward on silence. Beyond: cold stone, darkness, the mineral smell of something very old.
-DNDEND
-
-# 4. NPC dialogue (amber border)
-python3 ${CLAUDE_SKILL_DIR}/display/send.py --npc "Innkeeper" << 'DNDEND'
-"You shouldn't have come back here."
-DNDEND
-```
-
-**Block order:** `--player` → `--dice` → plain narration (with `--stat-*` flags) → `--npc` → `--tutor` (if tutor mode active)
-
 **Per-turn combat sequence (follow exactly):**
 ```
-a. send.py --player  ← player action (or describe NPC intent inline)
-b. Roll all dice (combat.py attack / dice.py)
-c. send.py --dice    ← ALL roll results with context
-d. tracker.py        ← conditions, concentration, death saves if applicable
+a. Player states their action (typed in chat).
+b. Roll all dice (combat.py attack / dice.py). NPC/monster rolls are yours; PC rolls per roll_mode.
+c. tracker.py        ← conditions, concentration, death saves if applicable
    tracker.py effect tick <actor>  ← decrement round effects; prints any expiry warnings
-e. Write full narration for this turn
-f. send.py [--stat-*] ← send complete narration + ALL stat changes — NEVER skip
-   Use --effect-start / --effect-end flags when effects begin or end this turn (syncs display)
-g. push_stats.py --turn-current  ← advance turn pointer (still separate — not a narration)
+d. Write the full narration for this turn as chat prose. Put any NPC speech in its own
+   visually distinct block, separate from DM narration (see "Narration principles").
+e. Persist stat changes: edit characters/<PC>.md for HP/slots/XP; state.md for live flags,
+   at scene boundaries / autosave cadence.
 ```
-Step (f) is the most commonly missed. Every narration block must be sent.
-Step (g) uses `push_stats.py --turn-current` directly because it has no narration to bundle with.
-`tracker.py effect tick` is the headless fallback — it fires regardless of whether the display is running.
 
 ---
 
@@ -430,37 +304,22 @@ Step (g) uses `push_stats.py --turn-current` directly because it has no narratio
 
 Enabled via `/dm:dnd tutor on`. Stored as `tutor_mode: true` in `state.md → ## Session Flags`. Check this flag on every `/dm:dnd load`. Session-scoped — does not persist unless explicitly set again.
 
-**DM Help button vs Tutor Mode — these are separate:**
-- The **◈ DM Help button** on the display fires a single one-shot hint via `dm_help.py`. It sends one `--tutor` block to the display, then stops. It does NOT set `tutor_mode: true` in state.md. It does NOT enable ongoing tutor sends from the DM.
-- **Tutor Mode** (ongoing) is only active when `tutor_mode: true` is present in state.md. Check this flag at load; do not infer it from the presence of a tutor block in the display log.
-- When a DM Help hint appears in context mid-session, do NOT start appending `--tutor` blocks to your own responses. Only do so if `tutor_mode: true` is set.
-
-When active, append a `--tutor` send at the end of each Bash block for:
+When active, end the turn's response with a short tutor hint in its own blockquote, prefixed `◈ Tutor:`, for:
 
 | Trigger | What to include |
 |---------|----------------|
 | Scene intro / new location | Skills worth attempting, what they'd reveal |
 | Decision point | 2–3 visible options; note which close doors permanently |
-| Before irreversible choice | Prefix `⚠ WARNING:` — renders in amber |
+| Before irreversible choice | Prefix `⚠ WARNING:` |
 | After failed roll | Stat, DC, and the gap |
 | Combat round end | Unused bonus actions, reactions, or features |
 | Spell / feature use | Range, duration, concentration conflicts |
 
 Write from inside the fiction. 2–4 sentences. Never spoil undiscovered information. Omit if nothing is at stake.
 
-```bash
-# Warning variant (amber):
-python3 ${CLAUDE_SKILL_DIR}/display/send.py --tutor << 'DNDEND'
-⚠ WARNING: Moving the stone off the ship cannot be undone. Han-Ulish warned this would be read as invitation.
-DNDEND
+> ◈ Tutor: There are at least two ways in — the front gate (visible, guarded) and the loading dock you passed (dark, unguarded).
 
-# Standard hint:
-python3 ${CLAUDE_SKILL_DIR}/display/send.py --tutor << 'DNDEND'
-There are at least two ways in — the front gate (visible, guarded) and the loading dock you passed (dark, unguarded).
-DNDEND
-```
-
-The tutor block always goes **last** in the Bash send sequence.
+The tutor hint always goes **last** in the response, after the narration's closing steer.
 
 ---
 

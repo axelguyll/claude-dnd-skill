@@ -7,7 +7,7 @@ Designed to run as a Claude Code **Stop hook** (install with
 
   1. **Deterministic snapshot** (every turn): copies the active campaign's
      `state.md` to a recovery file under the runtime dir and verifies the
-     display's `session_tail.json` is healthy. Pure file I/O — no model needed.
+     campaign's `session_tail.json` is healthy. Pure file I/O — no model needed.
 
   2. **Cadence checkpoint** (every Nth turn): emits a Stop-hook `block`
      decision whose `reason` instructs the DM to do a silent micro-save

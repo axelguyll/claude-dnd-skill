@@ -93,7 +93,7 @@ def random_name(taken_slugs: set[str]) -> str:
 
 _TEXT_FILES_ALWAYS = ["npcs.md", "npcs-full.md", "state.md",
                       "session-log.md", "world.md",
-                      "session_tail.json"]  # display companion's last-N events
+                      "session_tail.json"]  # last-N narrative beats (continuity tail)
 _TEXT_FILES_OPTIONAL = ["session-log-archive.md"]
 
 # Honorific prefixes to strip when computing title-stripped variants.

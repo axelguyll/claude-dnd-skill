@@ -10,9 +10,7 @@ You retain copyright on your own contributions. AGPL-3.0-or-later applies forwar
 
 ## What's most useful to contribute
 
-- **Bug fixes** on the display companion, dice mechanics, session-flow scripts, or anything in `scripts/`
-- **i18n / language packs** for SFX triggers — see `display/audio.py` for the existing pattern. #32 added Chinese; more languages are very welcome
-- **Atmospheric extensions** like the optional dice server (#30) — anything that improves the in-person table experience without compromising the persistent-state model
+- **Bug fixes** on dice mechanics, session-flow scripts, or anything in `scripts/`
 - **Performance and cleanup** in the Python helper modules
 
 ## Process

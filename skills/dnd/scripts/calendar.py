@@ -44,11 +44,8 @@ Usage:
 import json
 import os
 import sys
-import subprocess
 import argparse
-from paths import find_campaign as _find_campaign, display_dir as _display_dir
-
-SEND_PY = str(_display_dir() / "send.py")
+from paths import find_campaign as _find_campaign
 
 # Time of day labels and approximate hour ranges
 TIMES_OF_DAY = [
@@ -154,19 +151,6 @@ def _advance_hours(cal: dict, hours: int) -> None:
             cal["year"] += 1
 
 
-def _send_date(cal: dict) -> None:
-    """Push the current date announcement to the display."""
-    msg = f"📅 {_format_date(cal)}"
-    try:
-        proc = subprocess.Popen(
-            [sys.executable, SEND_PY, "--dice"],
-            stdin=subprocess.PIPE, capture_output=True, timeout=3,
-        )
-        proc.communicate(input=msg.encode())
-    except Exception:
-        pass
-
-
 # ─── Commands ────────────────────────────────────────────────────────────────
 
 def cmd_init(campaign: str, args) -> None:
@@ -222,7 +206,6 @@ def cmd_advance(campaign: str, amount: int, unit: str) -> None:
 
     label = f"+{amount} {unit}"
     print(f"  {label} → {_format_date(cal)}")
-    _send_date(cal)
 
 
 def cmd_rest(campaign: str, rest_type: str) -> None:
@@ -240,7 +223,6 @@ def cmd_rest(campaign: str, rest_type: str) -> None:
 
     _save(campaign, cal)
     print(f"  {label} → {_format_date(cal)}")
-    _send_date(cal)
 
 
 def cmd_now(campaign: str) -> None:
@@ -278,7 +260,6 @@ def cmd_set(campaign: str, date_str: str, time_str: str) -> None:
 
     _save(campaign, cal)
     print(f"  Date set: {_format_date(cal)}")
-    _send_date(cal)
 
 
 def cmd_time(campaign: str, time_str: str) -> None:
@@ -289,7 +270,6 @@ def cmd_time(campaign: str, time_str: str) -> None:
     cal["hour"] = HOURS_PER_TIME.get(time_str.lower(), cal.get("hour", 8))
     _save(campaign, cal)
     print(f"  Time set: {_format_date(cal)}")
-    _send_date(cal)
 
 
 def cmd_events(campaign: str) -> None:

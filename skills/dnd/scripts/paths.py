@@ -19,8 +19,8 @@ Environment:
 
 Two distinct roots:
     * DATA root  — where campaigns/characters live (DND_CAMPAIGN_ROOT). User data.
-    * CODE root  — where scripts/data/display assets live (skill_root()). Read the
-                   bundled SRD, the display companion, and sibling scripts from here.
+    * CODE root  — where scripts/data assets live (skill_root()). Read the
+                   bundled SRD and sibling scripts from here.
                    For a plugin this is <plugin>/skills/dnd/, so we resolve to the
                    skill dir — never CLAUDE_PLUGIN_ROOT (wrong granularity).
 """
@@ -41,9 +41,9 @@ def _root() -> pathlib.Path:
     return _DEFAULT_ROOT
 
 
-# ── Code root (scripts / data / display assets) ───────────────────────────
+# ── Code root (scripts / data assets) ─────────────────────────────────────
 # Distinct from the DATA root above. This locates the *installed code* — the
-# bundled SRD JSON, the display companion, and sibling scripts. paths.py lives
+# bundled SRD JSON and sibling scripts. paths.py lives
 # at <code-root>/scripts/paths.py, so the root is parent.parent. Works in every
 # install mode:
 #   1. Plugin     — code lives at <plugin>/skills/dnd/; CLAUDE_SKILL_DIR points
@@ -56,7 +56,7 @@ def _root() -> pathlib.Path:
 # that export it into the subprocess environment.
 
 def skill_root() -> pathlib.Path:
-    """Return the skill's own directory (holds scripts/, data/, display/)."""
+    """Return the skill's own directory (holds scripts/, data/, templates/)."""
     env = os.environ.get("CLAUDE_SKILL_DIR", "").strip()
     if env:
         return pathlib.Path(env).expanduser().resolve()
@@ -73,17 +73,11 @@ def scripts_dir() -> pathlib.Path:
     return skill_root() / "scripts"
 
 
-def display_dir() -> pathlib.Path:
-    """Display-companion CODE directory (Flask app, send.py, push_stats.py, …)."""
-    return skill_root() / "display"
-
-
 # ── Runtime state (writable, update-safe) ─────────────────────────────────
-# Distinct from both roots above. The display companion writes session state,
-# auth tokens, device approvals, and TLS certs while running. These must NOT
-# live in the CODE root: a plugin's code dir is refreshed/replaced on
-# `/plugin update` (which would wipe device approvals + certs) and may be
-# read-only. Keep them beside the user's campaign data, which is stable across
+# Distinct from both roots above. Session runtime state (active-campaign
+# marker, autosave counters/checkpoints) must NOT live in the CODE root: a
+# plugin's code dir is refreshed/replaced on `/plugin update` and may be
+# read-only. Keep it beside the user's campaign data, which is stable across
 # installs and updates. Override with DND_RUNTIME_DIR; default <data-root>/.runtime.
 
 def runtime_dir() -> pathlib.Path:
