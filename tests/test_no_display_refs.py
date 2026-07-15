@@ -2,6 +2,7 @@
 canonical skill docs or the state template. Mirrors DMVoiceTests (content-assertion
 guard) in test_prep_skill_prose.py — prevents silent reversion, not a behavior test."""
 import pathlib
+import re
 import unittest
 
 SKILL_DIR = pathlib.Path(__file__).resolve().parents[1] / "skills" / "dnd"
@@ -26,12 +27,18 @@ FORBIDDEN = [
     "--dc ",             # display dice-request DC leak (trailing space: not "--dc]" etc.)
     "--player",          # phone-tab routing flag; see _strip_allowed for --players
     "start-display",
-    "LAN",
     "dm_help",
     "tts_voice",
     "TTS",
     "sfx_",              # sfx_languages flag
     "SFX",
+]
+
+# Word-boundary patterns for tokens that substring-match innocent words
+# (plain "LAN" would flag "Beat 2b LANDED").
+FORBIDDEN_RE = [
+    re.compile(r"\bLAN\b"),
+    re.compile(r"--lan\b"),
 ]
 
 # xp.py's `calc --players N` is a party-size argument, not display routing.
@@ -61,6 +68,9 @@ class NoDisplayRefsTests(unittest.TestCase):
                 for tok in FORBIDDEN:
                     if tok in stripped:
                         hits.append(f"{path.name}:{i}: {tok!r} in {line.strip()[:80]}")
+                for pat in FORBIDDEN_RE:
+                    if pat.search(stripped):
+                        hits.append(f"{path.name}:{i}: {pat.pattern!r} in {line.strip()[:80]}")
         self.assertEqual(hits, [], "display refs remain:\n" + "\n".join(hits))
 
 
