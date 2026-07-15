@@ -296,11 +296,21 @@ blank = surprise-me), tone, difficulty, and the imported party sheets.
    the bible to the canonical path `~/.claude/dnd/campaigns/<name>/spine.json`.
 3. **Validate — hard gate.** `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/schema.py --bible ~/.claude/dnd/campaigns/<name>/spine.json`
    If it prints `INVALID`, fix every listed error and re-run. Never proceed on an invalid spine.
-4. **Map shopping list.** In a SEPARATE pass told "describe the look only, never why the
-   party goes there or what happens," fill `templates/map-list.md`. Bias to common,
-   acquirable archetypes. Keep the *Acquire* hint a terrain archetype ("large cavern map",
-   "lava foundry map"), never a creature or plot label — the hint ships in the one artifact
-   the host reads.
+4. **Asset shopping lists.** In a SEPARATE pass told "describe the asset only, never why
+   the party goes there or what happens," generate three lists into the campaign dir by
+   copying and filling the templates:
+   - `map-list.md` from `templates/map-list.md` — **encounter scenes only** (tactical
+     fights); skip social/exploration scenes. *Acquire* hint is a terrain archetype
+     ("large cavern map"), never a creature or plot label.
+   - `ambient-list.md` from `templates/ambient-list.md` — one loop per distinct notable
+     location (town square, crypt, cave). Describe the atmosphere only.
+   - `sfx-list.md` from `templates/sfx-list.md` — **spine-guaranteed events only** (named
+     monster set-pieces, fixed story beats). Describe the **sound stripped of its
+     trigger** so the list never spoils the host.
+   Then build the host's asset hub:
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/render_assets.py --campaign <name>`
+   These lists ship in the artifacts the host reads. Keep every hint acquirable and every
+   description spoiler-free.
 5. **Scaffold campaign files.** Copy `npcs.md` and `session-log.md` from
    `${CLAUDE_SKILL_DIR}/templates/` into the campaign dir (empty). Write `state.md` from the
    template: header `Session count: 0` and `**Ruleset:**` from step 0; `## Current Situation →

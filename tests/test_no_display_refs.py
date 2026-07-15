@@ -12,6 +12,10 @@ SKILL_DIR = pathlib.Path(__file__).resolve().parents[1] / "skills" / "dnd"
 # "NPC block" / "NPC dialogue" / bare "NPC" must stay legal. Likewise
 # "roll_mode" (players/auto is still a terminal concept), "dice.py", and
 # "--silent" (hidden-roll mechanic) survive.
+# "SFX" / "sfx_" are NOT here — sound-effect references are now a legitimate,
+# different feature (local host-clicked sound cue files driving the asset hub),
+# unrelated to the removed display/network audio stack, which stays banned via
+# "TTS", "tts_voice", "display/", and the other tokens below.
 FORBIDDEN = [
     "display/",          # ${CLAUDE_SKILL_DIR}/display/... paths
     "send.py",
@@ -30,8 +34,6 @@ FORBIDDEN = [
     "dm_help",
     "tts_voice",
     "TTS",
-    "sfx_",              # sfx_languages flag
-    "SFX",
 ]
 
 # Word-boundary patterns for tokens that substring-match innocent words
