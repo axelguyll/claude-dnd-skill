@@ -293,6 +293,11 @@ c. tracker.py        ← conditions, concentration, death saves if applicable
    tracker.py effect tick <actor>  ← decrement round effects; prints any expiry warnings
 d. Write the full narration for this turn as chat prose. Put any NPC speech in its own
    visually distinct block, separate from DM narration (see "Narration principles").
+d2. Refresh the host's combat tracker from the current turn's state:
+    `python3 ${CLAUDE_SKILL_DIR}/scripts/render_tracker.py --campaign <name> --state '<STATE_JSON>' --round <n>`
+    Pass the same combatant STATE_JSON you pipe through `combat.py` (ordered so the current
+    turn's actor is first — it renders as the highlighted active row). Only during combat;
+    out of combat, leave `tracker.html` untouched.
 e. Persist stat changes: edit characters/<PC>.md for HP/slots/XP; state.md for live flags,
    at scene boundaries / autosave cadence.
 ```

@@ -140,6 +140,13 @@ class DMDashboardProseTests(unittest.TestCase):
         window = SKILL[idx - 400: idx + 400]
         self.assertIn("never invent a cue", window)
 
+    def test_combat_loop_refreshes_tracker_html(self):
+        self.assertIn("render_tracker.py", SKILL)
+
+    def test_scripts_doc_covers_both_render_scripts(self):
+        self.assertIn("render_tracker.py", SCRIPTS)
+        self.assertIn("render_assets.py", SCRIPTS)
+
 
 if __name__ == "__main__":
     unittest.main()

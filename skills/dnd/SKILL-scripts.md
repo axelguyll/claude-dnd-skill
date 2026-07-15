@@ -341,3 +341,34 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/corpus_check.py --campaign <name>
 ```
 
 Validates that every chapter id in `source-index.md` has a matching `source/<id>.md` (and vice-versa) and that `arc.md` exists. Run it at the end of `/dm:dnd import`. A campaign with no `source/` layer (dynamic, sandbox, or a pre-v2.2.0 import) is reported as a clean no-op — nothing to validate, and its load path is unchanged.
+
+---
+
+## Combat-Tracker Render — `scripts/render_tracker.py`
+
+Writes the host-side `tracker.html` (DM dashboard) from the live combat state. Call it at
+the end of **each combat turn**, passing the same combatant `STATE_JSON` you pipe through
+`combat.py`, ordered so the current actor is first (it becomes the highlighted active row).
+Merges persisted conditions/concentration/death-saves from `tracker.json` and shows each
+condition's SRD effect inline. The file carries a meta-refresh so the browser tab reloads
+itself. No server.
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/scripts/render_tracker.py \
+  --campaign <name> --state '<STATE_JSON from combat.py>' --round <n>
+```
+
+Out of combat, do not call it — leave the last tracker in place.
+
+## Asset-Hub Render — `scripts/render_assets.py`
+
+Writes the host-side `assets.html` (maps + ambient loops + SFX buttons) from the three
+prep shopping lists in the campaign dir (`map-list.md`, `ambient-list.md`, `sfx-list.md`).
+Run once at the end of prep, and again any time the host adds or renames sound/map files.
+Buttons are pre-wired to the canonical filenames; a button whose file is not yet in
+`maps/`/`sounds/` simply plays nothing until the file exists. This file is **static** — it
+carries no meta-refresh, so a combat-tracker regen never interrupts a playing ambient loop.
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/scripts/render_assets.py --campaign <name>
+```
