@@ -2,9 +2,10 @@
 
 **Date:** 2026-07-15
 **Status:** Approved, pre-implementation
-**Scope:** Six adjudication rules that make play *feel* like a real 5e table. Five are
+**Scope:** Seven adjudication rules that make play *feel* like a real 5e table. Six are
 prose edits to `skills/dnd/SKILL.md`. One (rule 4a) also carries a small `dice.py`
-change, because the mislabel it fixes lives in the script, not the prompt. Kept as a
+change, because the mislabel it fixes lives in the script, not the prompt. (Rule 7 was
+added after the 2026-07-15 live playtest surfaced the gap.) Kept as a
 **separate spec from the voice overhaul** (`2026-07-15-dm-voice-overhaul-design.md`) so
 the two review cleanly apart: voice governs *how the DM writes*; this governs *how the
 DM adjudicates*.
@@ -71,6 +72,27 @@ Stakes and opposition decide whether dice come out — not the player's phrasing
 > around a safe tavern, recalling common lore). Call for a check only when failure costs
 > something or a force actively resists. Don't reflexively roll because the player used a
 > skill verb.
+
+### Rule 7 — Ability + skill selection, named in full (Dice convention, `SKILL.md:261`)
+
+Added after live playtest (2026-07-15): the DM called for a bare *"Intelligence check"*
+to decipher arcane symbols, which is the right ability but under-specific — RAW puts
+eldritch symbols under **Intelligence (Arcana)**, and a real DM names the skill. 5e has no
+fixed action→skill table (ability + skill are DM judgment from the fiction), so this is a
+selection *guideline* plus a naming rule, not a lookup table.
+
+> **When a check is warranted, the fiction decides which ability and skill apply — then
+> call it by its full "Ability (Skill)" name.** Pick the ability from what the character
+> is doing and the skill from the task's domain: Arcana (magical/eldritch symbols, runes,
+> spell-lore), History (the past, dead languages, non-magical lore), Investigation
+> (deducing from physical evidence or a mechanism), Perception (merely noticing). Name it
+> in full — *"Intelligence (Arcana) check"*, not a bare *"Intelligence check"*. The same
+> wall is Arcana if magical, History if a mundane lost script, Investigation if a physical
+> mechanism — the fiction, not the object, sets the skill.
+
+This pairs with rule 5: the *"Ability (Skill)"* name and the disadvantage dice
+instruction get spoken together (*"Intelligence (Arcana) check — poisoned, so roll two
+d20 and take the lower"*).
 
 ### Rule 4a — Nat 1/20 by roll type + `dice.py` fix (Dice convention, `SKILL.md:261`; `dice.py`)
 
@@ -152,6 +174,7 @@ rule's presence against silent regression:
 - Rule 4a: `assertIn` the nat-1/20-only-on-attacks rule.
 - Rule 4b: `assertIn` both the fail-forward text and the puzzle carve-out.
 - Rule 5: `assertIn` the name-the-dice / net-out-adv-dis text.
+- Rule 7: `assertIn` the fiction-decides-ability-and-skill text and the "Ability (Skill)" naming rule.
 
 Plus a **dice.py behavioral unit test** (this rule has real code): assert a plain
 `d20` roll that lands on 20/1 does **not** emit `CRITICAL HIT` / `FUMBLE`, and that the

@@ -115,6 +115,10 @@ class DMAuthenticityTests(unittest.TestCase):
         self.assertIn("Voice an active condition's mechanical effect and name the dice", SKILL)
         self.assertIn("advantage and disadvantage never stack", SKILL)
 
+    def test_rule7_ability_skill_selection_and_full_name(self):
+        self.assertIn("the fiction decides which ability and skill apply", SKILL)
+        self.assertIn("Ability (Skill)", SKILL)
+
 
 if __name__ == "__main__":
     unittest.main()
