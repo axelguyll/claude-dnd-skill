@@ -8,7 +8,19 @@ Versions before **1.6.0** are reconstructed retroactively from git history; the 
 
 ---
 
-## [Unreleased]
+## [Unreleased] — 2026-07-15 — Terminal-only: display companion removed
+
+- **Removed the display companion entirely.** The Flask/SSE web app, phone
+  companion, on-screen dice drawer, autorun/taxi mode, SFX/audio, and TTS are
+  gone (~14,200 lines under `skills/dnd/display/`), along with the optional
+  physical dice server (`dice-server/`, ~1,600 lines) and `dice.py`'s bridge
+  to it. This is now a terminal-only DM skill. No persistent state is
+  affected — HP/slots/XP live in character sheets, conditions/effects in
+  `tracker.py`, live flags in `state.md`, and the session tail
+  (`session_tail.json`) survives as a continuity file written at save. The
+  narration-vs-NPC block separation is preserved as a prose writing
+  convention, and tutor mode continues as a chat blockquote. For solo/
+  small-table play driven entirely from the terminal.
 
 ## [2.3.0] — 2026-06-27 — Zero-LLM continuity tools: deterministic recap, solo oracles, scene bangs, one-shot graph apply
 

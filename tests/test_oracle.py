@@ -29,13 +29,13 @@ class ChaosTests(unittest.TestCase):
         self.assertEqual(oracle.adjust_chaos(9, pc_proactive=False), 9)
 
     def test_read_default(self):
-        self.assertEqual(oracle.read_chaos("## Session Flags\n- autorun: off\n"), 5)
+        self.assertEqual(oracle.read_chaos("## Session Flags\n- tutor_mode: false\n"), 5)
 
     def test_read_explicit(self):
         self.assertEqual(oracle.read_chaos("## Session Flags\n- chaos_factor: 7\n"), 7)
 
     def test_write_inserts_under_section(self):
-        text = "# Campaign\n\n## Session Flags\n- autorun: off\n"
+        text = "# Campaign\n\n## Session Flags\n- tutor_mode: false\n"
         out = oracle.write_chaos(text, 8)
         self.assertIn("chaos_factor: 8", out)
         self.assertEqual(oracle.read_chaos(out), 8)

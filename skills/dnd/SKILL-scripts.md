@@ -293,13 +293,13 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/lookup.py condition "poisoned"
 python3 ${CLAUDE_SKILL_DIR}/scripts/lookup.py monster "goblin"
 python3 ${CLAUDE_SKILL_DIR}/scripts/lookup.py monster "dragon" --all   # all fuzzy matches
 
-# Programmatic (used by display companion /srd-lookup endpoint):
+# Programmatic:
 from lookup import lookup, lookup_record, lookup_with_level
 lookup("fireball", category="spell")                  # → formatted string
 lookup_with_level("sneak attack", category="feature", level=3)  # → level-resolved string
 ```
 
-**When to use:** combat (monster stat blocks before using them); spellcasting (range, components, duration, at-higher-levels); conditions (rule text before applying); loot and equipment; NPC generation (monster stat block as mechanical base). The display companion's character sheet modal handles lookups automatically during play — these CLI calls are for DM reference outside the UI.
+**When to use:** combat (monster stat blocks before using them); spellcasting (range, components, duration, at-higher-levels); conditions (rule text before applying); loot and equipment; NPC generation (monster stat block as mechanical base).
 
 ---
 
