@@ -33,7 +33,6 @@ import sys
 import os
 import re
 import argparse
-import subprocess
 import pathlib
 
 # ── Difficulty thresholds — XP per character per level (Easy/Medium/Hard/Deadly) ──
