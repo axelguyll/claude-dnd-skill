@@ -87,7 +87,7 @@ class FlagAndMarkerTests(unittest.TestCase):
         )
 
     def test_autosave_default_on_when_flag_absent(self):
-        self._write_state("autorun: off")
+        self._write_state("tutor_mode: false")
         self.assertTrue(self.ac.autosave_enabled("test-camp"))
 
     def test_autosave_default_on_when_section_absent(self):
