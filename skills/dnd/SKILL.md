@@ -200,7 +200,8 @@ Once a campaign is loaded, stay in DM mode. Interpret all player messages as in-
 - Open scenes with sensory atmosphere (smell, sound, light, texture)
 - Present situations — not solutions. Let the player choose.
 - **Don't tag every turn with "What do you do?"** End on the situation itself — the NPC's line, the event, the pressure — and let the player respond to it. Only prompt directly at a genuine decision point, and then with real options (*"Fight, or find another way out?"*), always leaving room (*"…or something else?"*). Vary the wording; never a rote question. The prompt is always narration, in the narrator's voice — never tacked onto the end of an NPC's dialogue line.
-- **Always put NPC speech in its own block, visually separated from DM narration** — even a one-line interjection; never inline dialogue into the narration paragraph. Dialogue stays visually split from narration and never gets voiced in the narrator's register (or the narrator's aside voiced as the NPC). This is also why the end-of-turn steer must be narration, never trailing an NPC's line.
+- **Always put NPC speech in its own block, visually separated from DM narration** — even a one-line interjection; never inline dialogue into the narration paragraph. Render it as a blockquoted, **bold speaker-labeled** line — `> **Nix:** "You're late."` — the strongest visual break chat markdown offers. Dialogue stays visually split from narration and never gets voiced in the narrator's register (or the narrator's aside voiced as the NPC). This is also why the end-of-turn steer must be narration, never trailing an NPC's line.
+- **When the scene's location shifts, drop a sound-cue block** — on its own line, `🔊 **Cue:** *<handle>*`, where `<handle>` matches an ambient toggle in the host's asset hub (`assets.html`), so the host knows to switch the location loop. It is a standalone block like NPC speech — never bury it inside a narration paragraph or an NPC's dialogue line, so the host can spot it and click. Cue only loops that appear on the campaign's ambient list — **never invent a cue** for a sound the host doesn't have.
 - **Give a pronunciation hint the first time an invented name appears** that's hard to say aloud: *"Xanathar (zan-a-thar)."* The human reading aloud shouldn't have to guess. First use only — don't repeat the hint on later mentions.
 - Hidden rolls (Perception, Insight, Stealth) → roll secretly via `dice.py --silent`, narrate only the perceived result
 - **Voice an active condition's mechanical effect and name the dice — don't just flavor it.** When a condition changes an actor's roll, say the cause and the exact instruction together. Under `roll_mode: players`: *"The venom still burns — roll two d20 for the attack and take the lower. That's disadvantage."* Under `roll_mode: auto`: resolve it yourself with `dice.py "d20+X dis"` and show the math. Net the sources out first: advantage and disadvantage never stack (a second source adds nothing), and one of each cancels to a single flat d20. Voice it the first turn the condition applies and again whenever it changes the current roll — not every turn (that drones across long combats).
@@ -292,6 +293,11 @@ c. tracker.py        ← conditions, concentration, death saves if applicable
    tracker.py effect tick <actor>  ← decrement round effects; prints any expiry warnings
 d. Write the full narration for this turn as chat prose. Put any NPC speech in its own
    visually distinct block, separate from DM narration (see "Narration principles").
+d2. Refresh the host's combat tracker from the current turn's state:
+    python3 ${CLAUDE_SKILL_DIR}/scripts/render_tracker.py --campaign <name> --state '<STATE_JSON>' --round <n>
+    Pass the same combatant STATE_JSON you pipe through combat.py (ordered so the current
+    turn's actor is first — it renders as the highlighted active row). Only during combat;
+    out of combat, leave tracker.html untouched.
 e. Persist stat changes: edit characters/<PC>.md for HP/slots/XP; state.md for live flags,
    at scene boundaries / autosave cadence.
 ```
