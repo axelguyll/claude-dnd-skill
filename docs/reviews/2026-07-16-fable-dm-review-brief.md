@@ -214,7 +214,15 @@ Nothing else gets edited without owner approval.
 - [x] **C** — D1 prep-phase review → findings-d1 (done 2026-07-16; 11 findings, 3 HIGH — party sheets unread, L1 hardcode, zero prep NPCs)
 - [x] **D** — D2 DM-humanness review (+ research) → findings-d2 (done 2026-07-16; 12 findings, 3 HIGH — authored arcs orphaned from steering/pre-emption gates, spine situation/threats/secret never read in play, Character Pillar unconsumed at table)
 - [x] **E** — D3 architecture-coherence review → findings-d3 (done 2026-07-16; 15 findings, 3 HIGH — Session count never incremented, session tail has no reader, ## Active Combat written once at combat start; all 4 C/D handoff checks resolved with riders for F)
-- [ ] **F** — Synthesis → summary + priorities
+- [x] **F** — Synthesis → summary + priorities (done 2026-07-16; 38 findings merged into
+  `2026-07-16-fable-dm-review-summary.md`; owner approved all 40 fix-wave items + the
+  mirror-check script + wiring `difficulty:`; wave applied — prose, templates, schema.py
+  party block + `Nx ` threat counts, new `prep/mirror_check.py`; 257 tests green (was
+  236); citations refreshed in ARCHITECTURE.md, CONTEXT.md, and the compass. **Review
+  complete.** Follow-up backlog: **C10 re-probe** — end-to-end prep probe on the current
+  flow, auditing party-binding (0.7/1.5/party block), one full `beat complete` with the
+  mirror-check + write-back round-trip, a simulated mid-combat compaction, and a
+  session-count bump check.)
 
 **To launch a session:** tell Fable which session letter to run and point it at this file —
 e.g. *"Read `docs/reviews/2026-07-16-fable-dm-review-brief.md` and run Session A."*

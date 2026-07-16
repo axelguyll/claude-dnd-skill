@@ -6,8 +6,8 @@ Designed to run as a Claude Code **Stop hook** (install with
 `install_autosave_hook.py`). It fires after every DM turn and does two things:
 
   1. **Deterministic snapshot** (every turn): copies the active campaign's
-     `state.md` to a recovery file under the runtime dir and verifies the
-     campaign's `session_tail.json` is healthy. Pure file I/O — no model needed.
+     `state.md` to a recovery file under the runtime dir. Pure file I/O — no
+     model needed.
 
   2. **Cadence checkpoint** (every Nth turn): emits a Stop-hook `block`
      decision whose `reason` instructs the DM to do a silent micro-save

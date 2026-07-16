@@ -11,7 +11,7 @@
 - **In-world date:** <Day, Month, Year — canonical source; keep in sync above>
 - **Season:** <current season>  **Weather:** <current conditions>
 - **Threat arc stage:** 1 — Now
-- **Faction states:**
+- **Faction activity:** *(world-side, one line each — the authoritative party-relative standing lives in Live State Flags → Faction stances)*
   - <Faction Name>: <one-line current disposition and activity>
   - <Faction Name>: <one-line>
 
@@ -26,7 +26,7 @@
 
 ## Deeds
 *Append-only. Every shift in **Faction stances** (Live State Flags) must cite a deed here.
-Format: `<beat id> — <faction> — <what the party did> — <+ / − / neutral>`. This is the
+Format: `<beat id or session number> — <faction> — <what the party did> — <+ / − / neutral>`. This is the
 party-side provenance the world-side Faction Moves log does not capture (ADR-0016 decision B).*
 *(none yet)*
 
@@ -60,7 +60,7 @@ arc_number: 1          # increments each time /dnd arc new generates a successor
 generated: "<date>"
 revised: null
 
-theme: "<one sentence — what this story is ultimately about, not what happens but what it means>"
+theme: "<one sentence — what this story MEANS, never what happens; the premise (world.md) states the situation, the theme states its meaning>"
 resolution: "<committed endpoint shape — not specific events, but the emotional/thematic truth if the party succeeds>"
 
 acts:
@@ -176,8 +176,9 @@ revision_log: []
 *(leave empty until the first arc completes)*
 
 ## Session Flags
-*(tutor_mode, roll_mode, autosave — session-scoped flags set via /dnd commands)*
+*(tutor_mode, roll_mode, autosave, session_length — session-scoped flags set via /dnd commands)*
 *(roll_mode: players|auto — default players. Who rolls PC d20s; see SKILL.md "Dice convention".)*
 *(autosave: on|off — default on. Governs the behind-the-scenes continuity checkpoint (Live State Flags + graph + session tail). Toggle with /dm:dnd autosave on|off.)*
+*(session_length: short|standard|open-ended — asked at /dm:dnd load; paces the session shape in scenes, see SKILL.md Standard 6.)*
 
 ## DM Notes (hidden from players)

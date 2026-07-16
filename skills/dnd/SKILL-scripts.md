@@ -208,14 +208,15 @@ Deterministic state-diff between two character snapshots. Computes the mechanica
 CAMP=my-campaign
 
 # Snapshot the party now — sets the baseline (writes to <campaign>/.recap/,
-# rolling last → prev). Run this at session START (e.g. /dm:dnd load) so there
-# is a baseline to diff against later.
+# rolling last → prev). Needed only at the FIRST-EVER /dm:dnd load (no baseline
+# exists yet); after that, diff maintains the chain itself.
 python3 ${CLAUDE_SKILL_DIR}/scripts/session_recap.py snapshot --campaign $CAMP
 
 # Diff the baseline against current state → one-paragraph summary, then ADVANCE
-# the baseline to "now" so the next diff chains from here. Run at /dm:dnd save
-# (end of session) for a since-start recap, or each turn for a since-last-turn
-# recap — either way it advances, so consecutive diffs never re-report old deltas.
+# the baseline to "now" so the next diff chains from here. Run at every
+# /dm:dnd load (step 6.5): one call prints last session's mechanical changes
+# AND re-baselines for the next session. Do NOT snapshot at /dm:dnd end — an
+# end-of-session baseline diffed at next load reports nothing.
 python3 ${CLAUDE_SKILL_DIR}/scripts/session_recap.py diff --campaign $CAMP
 # → "Aldric: took 18 damage (30→12 HP); gained Poisoned; spent 2 level 1 slots."
 
@@ -321,6 +322,8 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/autosave_checkpoint.py --campaign <name> --s
 
 `autosave_checkpoint.py` runs as a Claude Code **Stop hook** (after each turn). It reads the active campaign from `<runtime-dir>/active-campaign.json` (written at `/dm:dnd load`) and the `autosave` flag from that campaign's `state.md`. It **no-ops** when no campaign is active (e.g. a non-D&D session), when `autosave: off`, or when already inside a hook-driven continuation. Every turn it snapshots `state.md` to the runtime dir; every N turns (default 10, `DND_AUTOSAVE_EVERY` to override) it emits a Stop-hook `block` decision that prompts the DM to flush continuity before yielding. The hook is **opt-in** — the in-model micro-save cadence works without it.
 
+**Recovery:** if `state.md` is lost or mangled, the latest turn-level snapshot is at `<runtime-dir>/<campaign>.autocheckpoint.md` — copy it back over `state.md`.
+
 **When to use:** offer `install_autosave_hook.py` to players running long imported modules who hit compaction mid-session. The flag toggle (`/dm:dnd autosave on|off`) is the in-session control.
 
 ## Lazy Corpus — `scripts/corpus_check.py`
@@ -382,3 +385,11 @@ twist) from `data/premise-seeds.yaml`, colored by a tone from `data/tones.yaml` 
 premise. Run at `/dm:dnd prep` step 0.5 to resolve tone (always) and to roll the premise
 scaffold when the host gave no premise; also runnable standalone to re-roll. `--seed` makes
 the roll reproducible.
+
+## Spine↔Mirror Check — `scripts/prep/mirror_check.py`
+
+`python3 ${CLAUDE_SKILL_DIR}/scripts/prep/mirror_check.py --campaign <name>`
+Compares `spine.json` against the authored-arc mirror in `state.md` (beat statuses +
+`current_beat`). Prints `MIRROR OK` (exit 0) or a mismatch list (exit 1; exit 2 =
+missing/unreadable files). Run as step 0 of `/dm:dnd beat complete`; on mismatch, stop
+and reconcile with the host — never silently pick a winner.

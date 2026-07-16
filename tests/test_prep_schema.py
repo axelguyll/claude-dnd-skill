@@ -24,6 +24,25 @@ class PartyLevelTests(unittest.TestCase):
         ]
         self.assertEqual(schema.party_levels(beats), [1, 1, 2, 2])
 
+    def test_start_level_seeds_the_chain(self):
+        beats = [
+            {"level_up_to": None},   # beat 1: at level 3
+            {"level_up_to": 4},      # beat 2: at 3 while playing, becomes 4 after
+            {"level_up_to": None},   # beat 3: at level 4
+        ]
+        self.assertEqual(schema.party_levels(beats, start_level=3), [3, 3, 4])
+
+
+class ParseThreatTests(unittest.TestCase):
+    def test_bare_name_means_one(self):
+        self.assertEqual(schema.parse_threat("Goblin"), (1, "Goblin"))
+
+    def test_count_prefix_splits(self):
+        self.assertEqual(schema.parse_threat("3x Goblin"), (3, "Goblin"))
+
+    def test_zero_count_parses_as_zero(self):
+        self.assertEqual(schema.parse_threat("0x Goblin"), (0, "Goblin"))
+
 
 def _valid_beats():
     # 6 beats, 3 acts (2/2/2), L1->8, threats in band for each beat's party level.
@@ -50,8 +69,14 @@ def _valid_beats():
     ]
 
 
-def _bible(beats):
-    return {"theme": "t", "resolution": "r", "causal_thread": "c", "beats": beats}
+def _bible(beats, party=None):
+    return {
+        "theme": "t",
+        "resolution": "r",
+        "causal_thread": "c",
+        "party": party if party is not None else {"size": 4, "start_level": 1},
+        "beats": beats,
+    }
 
 
 class ValidateBibleTests(unittest.TestCase):
@@ -62,6 +87,62 @@ class ValidateBibleTests(unittest.TestCase):
 
     def test_valid_bible_passes(self):
         self.assertEqual(schema.validate_bible(_bible(_valid_beats()), self.monsters), [])
+
+    def test_missing_party_block_flagged(self):
+        bible = _bible(_valid_beats())
+        del bible["party"]
+        errs = schema.validate_bible(bible, self.monsters)
+        self.assertTrue(any("party block required" in e for e in errs))
+
+    def test_party_size_out_of_range_flagged(self):
+        errs = schema.validate_bible(
+            _bible(_valid_beats(), party={"size": 0, "start_level": 1}), self.monsters
+        )
+        self.assertTrue(any("party.size" in e for e in errs))
+
+    def test_party_start_level_out_of_range_flagged(self):
+        # 8 leaves no room to level — the arc must end above start_level
+        errs = schema.validate_bible(
+            _bible(_valid_beats(), party={"size": 4, "start_level": 8}), self.monsters
+        )
+        self.assertTrue(any("party.start_level" in e for e in errs))
+
+    def test_level_up_to_must_exceed_start_level(self):
+        # An L3 party cannot have beats that "level up to" 2 or 3.
+        errs = schema.validate_bible(
+            _bible(_valid_beats(), party={"size": 4, "start_level": 3}), self.monsters
+        )
+        self.assertTrue(any("must exceed party.start_level" in e for e in errs))
+
+    def test_start_level_shifts_threat_band(self):
+        # The C2 failure mode inverted: at start_level 5, a lone Goblin (CR 1/4)
+        # is below the level-5 band floor and must now FAIL validation.
+        beats = _valid_beats()
+        for b in beats:
+            b["level_up_to"] = None
+        beats[3]["level_up_to"] = 6
+        beats[5]["level_up_to"] = 8
+        errs = schema.validate_bible(
+            _bible(beats, party={"size": 4, "start_level": 5}), self.monsters
+        )
+        self.assertTrue(any("Goblin" in e and "out of band" in e for e in errs))
+
+    def test_count_prefixed_threat_valid(self):
+        beats = _valid_beats()
+        beats[0]["threats"] = ["3x Goblin"]
+        self.assertEqual(schema.validate_bible(_bible(beats), self.monsters), [])
+
+    def test_zero_count_threat_flagged(self):
+        beats = _valid_beats()
+        beats[0]["threats"] = ["0x Goblin"]
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("count" in e for e in errs))
+
+    def test_count_prefixed_unknown_name_flagged(self):
+        beats = _valid_beats()
+        beats[0]["threats"] = ["3x Goblim"]  # typo behind a count prefix
+        errs = schema.validate_bible(_bible(beats), self.monsters)
+        self.assertTrue(any("unknown monster" in e for e in errs))
 
     def test_beat_count_out_of_range(self):
         errs = schema.validate_bible(_bible(_valid_beats()[:4]), self.monsters)

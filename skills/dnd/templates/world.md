@@ -6,7 +6,7 @@
 - **Magic level:** <none / low / medium / high>
 - **Setting type:** <medieval / renaissance / ancient / nautical / underground>
 - **Danger level:** <lethal / gritty / standard / heroic>
-- **Premise:** <the campaign in one sentence — what it's fundamentally about>
+- **Premise:** <the ground situation in one sentence — setting, conflict, antagonist: what is HAPPENING, never what it means (meaning is the arc's `theme`)>
 
 ---
 
@@ -159,6 +159,17 @@
 - **Seed 1 — <Title>:** <Hook. Complication. Possible resolution. Reward.>
 - **Seed 2 — <Title>:** <Hook. Complication. Possible resolution. Reward.>
 - **Seed 3 — <Title>:** <Hook. Complication. Possible resolution. Reward.>
+
+---
+
+## Party Hooks
+
+*Written at `/dm:dnd prep` step 0.7 — one line per PC recording how the bible binds to
+them: pillar (or class/background if no pillar) → which faction, node, mystery element,
+or spine beat carries it. An empty section means prep skipped the party — that is a
+defect, not a style choice.*
+
+- **<PC name>:** <pillar or hook source> → <world element / spine beat that carries it>
 
 ---
 

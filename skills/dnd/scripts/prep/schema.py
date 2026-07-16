@@ -4,6 +4,7 @@ band rules and cross-references. Pure functions; returns a list of error strings
 from __future__ import annotations
 
 import importlib
+import re
 
 import pathlib as _pathlib
 import sys as _sys
@@ -20,13 +21,28 @@ bestiary = importlib.import_module("prep.bestiary")
 _ACTS = {1, 2, 3}
 _MIN_BEATS, _MAX_BEATS = 6, 8
 _STATUSES = {"pending", "current", "complete", "skipped"}
+_MIN_PARTY_SIZE, _MAX_PARTY_SIZE = 1, 8
+# start_level caps at 7 so the arc can still level (final level_up_to <= 8)
+_MIN_START_LEVEL, _MAX_START_LEVEL = 1, 7
+
+_THREAT_COUNT = re.compile(r"^(\d+)x\s+(.+)$")
 
 
-def party_levels(beats: list[dict]) -> list[int]:
+def parse_threat(entry: str) -> tuple[int, str]:
+    """Split an optional 'Nx ' count prefix off a threat entry.
+    '3x Goblin' -> (3, 'Goblin'); bare 'Goblin' -> (1, 'Goblin')."""
+    m = _THREAT_COUNT.match(entry)
+    if m:
+        return int(m.group(1)), m.group(2)
+    return 1, entry
+
+
+def party_levels(beats: list[dict], start_level: int = 1) -> list[int]:
     """Level the party is at DURING each beat, before that beat's level_up_to
-    applies. Starts at 1; a non-null level_up_to raises the level for later beats."""
+    applies. Starts at the bible's party.start_level; a non-null level_up_to
+    raises the level for later beats."""
     levels: list[int] = []
-    current = 1
+    current = start_level
     for beat in beats:
         levels.append(current)
         target = beat.get("level_up_to")
@@ -38,6 +54,38 @@ def party_levels(beats: list[dict]) -> list[int]:
 def validate_bible(bible: dict, monsters: list[dict]) -> list[str]:
     errors: list[str] = []
     beats = bible.get("beats", [])
+
+    # party block: required — size drives encounter/quest shape, start_level
+    # drives the whole leveling + banding chain (an imported L3 party must not
+    # validate against an L1 spine).
+    party = bible.get("party")
+    start_level = 1
+    if not isinstance(party, dict):
+        errors.append('party block required: {"size": <int>, "start_level": <int>}')
+    else:
+        size = party.get("size")
+        if not (
+            isinstance(size, int)
+            and not isinstance(size, bool)
+            and _MIN_PARTY_SIZE <= size <= _MAX_PARTY_SIZE
+        ):
+            errors.append(
+                f"party.size {size!r} must be an int "
+                f"{_MIN_PARTY_SIZE}..{_MAX_PARTY_SIZE}"
+            )
+        sl = party.get("start_level")
+        if not (
+            isinstance(sl, int)
+            and not isinstance(sl, bool)
+            and _MIN_START_LEVEL <= sl <= _MAX_START_LEVEL
+        ):
+            errors.append(
+                f"party.start_level {sl!r} must be an int "
+                f"{_MIN_START_LEVEL}..{_MAX_START_LEVEL} "
+                "(the arc must be able to level beyond it)"
+            )
+        else:
+            start_level = sl
 
     n = len(beats)
     if not (_MIN_BEATS <= n <= _MAX_BEATS):
@@ -66,6 +114,11 @@ def validate_bible(bible: dict, monsters: list[dict]) -> list[str]:
     if all(isinstance(v, int) and not isinstance(v, bool) for v in non_null):
         if non_null != sorted(set(non_null)) or len(non_null) != len(set(non_null)):
             errors.append("level_up_to values must be strictly increasing across beats")
+        for v in non_null:
+            if v <= start_level:
+                errors.append(
+                    f"level_up_to {v} must exceed party.start_level {start_level}"
+                )
     if beats and beats[-1].get("level_up_to") is None:
         errors.append("final beat level_up_to must not be null (the arc must end leveled)")
 
@@ -116,10 +169,19 @@ def validate_bible(bible: dict, monsters: list[dict]) -> list[str]:
                 f"pending across beats, got {statuses}"
             )
 
-    # threats: known name + in band for that beat's party level
-    levels = party_levels(beats)
+    # threats: known name + in band for that beat's party level.
+    # Entries may carry an 'Nx ' count prefix ("3x Goblin") — the name part is
+    # what resolves against the bestiary; the count shapes the action economy.
+    levels = party_levels(beats, start_level)
     for b, lvl in zip(beats, levels):
-        for name in (b.get("threats") if isinstance(b.get("threats"), list) else []):
+        for entry in (b.get("threats") if isinstance(b.get("threats"), list) else []):
+            if not (isinstance(entry, str) and entry.strip()):
+                errors.append(f"beat {b.get('id')}: threat entries must be non-empty strings")
+                continue
+            count, name = parse_threat(entry)
+            if count < 1:
+                errors.append(f"beat {b.get('id')}: threat count in {entry!r} must be >= 1")
+                continue
             mon = bestiary.find_monster(name, monsters)
             if mon is None:
                 errors.append(f"beat {b.get('id')}: unknown monster {name!r}")

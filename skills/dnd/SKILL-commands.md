@@ -6,7 +6,7 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 
 ---
 
-## `/dm:dnd new <campaign-name> [theme]`
+## `/dm:dnd new <campaign-name> [tone]`
 
 > **Legacy mode (no leveling).** This milestone-only fork levels via authored beats; dynamic/sandbox campaigns started here have no leveling path. For a levelable campaign use `/dm:dnd prep`.
 
@@ -29,11 +29,11 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
    - Magic level: `none / low / medium / high`
    - Setting type: `medieval / renaissance / ancient / nautical / underground`
    - Danger level: `lethal / gritty / standard / heroic`
-   *(If `[theme]` supplied, pre-fill Tone and ask remaining three. Randomise any blank via dice.py and log `"d6=N → [result]"` in world.md.)*
+   *(If `[tone]` supplied, pre-fill Tone and ask remaining three. Randomise any blank via dice.py and log `"d6=N → [result]"` in world.md.)*
 7. **World Foundations** — geography/biome/climate, magic system, pantheon (2–3 active deities), calendar. Write to `## World Foundations` in world.md. Seed `state.md → ## World State → In-world date`.
 8. **Three Truths** — one settlement, one nearby threat, one mystery (with clue trail). Write to respective sections in world.md.
 9. **Threat Escalation Arc** — fill the five-stage table in world.md immediately after threat generation. Set current stage to 1. Write `Threat arc stage: 1 — Now` to `state.md → ## World State`.
-10. **2 Factions** — archetype, all fields including current activity. Write to `## Factions` in world.md. Write one-line faction states to `state.md → ## World State`.
+10. **2 Factions** — archetype, all fields including current activity. Write to `## Factions` in world.md. Write one-line faction-activity entries to `state.md → ## World State → Faction activity`.
 11. **3 NPCs with relationship web** — full entries (role, stats, demeanor, motivation, secret, speech quirk, faction, current goal, schedule, personality axes). Generate all three first, then fill Relationships (every NPC needs ≥2 links to others). Update index table.
 12. **3–5 Quest Seeds** from threat, factions, mystery, NPC motivations. Write to `## Quest Seed Bank` in world.md.
 13. **Dynamic Campaign Arc** — auto-generate the arc from all world data just created. Use Opus for this step. Ask: *"Generate a committed narrative arc? [y/n — recommended]"*
@@ -73,6 +73,8 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 
    (Default if the player dismisses: `roll_mode: players` — or the existing saved value.)
 
+   In the same `AskUserQuestion` call, add a second question: ***"How long are you playing today?"*** → `Short` / `Standard` / `Open-ended`. Write the answer as `session_length` to `state.md → ## Session Flags` (default `standard` if dismissed). This paces the session shape — see SKILL.md Standard 6 (pressure point by scene 2 for short, scene 3–4 for standard, re-raised every 3–4 scenes for open-ended).
+
 2. **Backwards-compat: ruleset migration check.** Before reading state.md, run:
 
    ```bash
@@ -95,7 +97,8 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 3. **Read campaign ruleset** for this session: `python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py campaign-ruleset <name>` (or import `campaign_ruleset` directly). Stash the result; pass `--ruleset <value>` to `lookup.py`, `build_supplemental.py`, and `combat.py` mastery calls so they route to the correct dataset.
 
 4. Read SKILL-scripts.md (for script syntax this session)
-5. **Mark this campaign active** (for the autosave hook): write `{"name": "<campaign-name>"}` to `$(python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py runtime-dir)/active-campaign.json`. This is what `autosave_checkpoint.py` reads to know which campaign to checkpoint; a stale marker is harmless. Then read state.md, world.md, npcs.md (index only), and all characters/*.md
+5. **Mark this campaign active** (for the autosave hook): write `{"name": "<campaign-name>", "skill_dir": "<absolute skill-dir path>"}` to `$(python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py runtime-dir)/active-campaign.json`. This is what `autosave_checkpoint.py` reads to know which campaign to checkpoint (it reads only the `name` key and tolerates extras); a stale marker is harmless. The `skill_dir` key is the post-compaction recovery anchor for the skill's own path — the runtime dir is derivable cold, the skill dir is not. Then read state.md, world.md, npcs.md (index only), session-tail.md (5–8 bullets — last session's final stretch, for the recap), and all characters/*.md
+   - **If any character sheet carries `⚠ LEVEL UP PENDING (Level N)`:** surface it and run `/dm:dnd level up` before play begins — the marker means a beat completed but its level-up passes never ran, and the spine's banding math assumes the level was applied.
    - **state.md contains `## DM Style Notes`** — read and internalize before narrating anything. These are table-specific calibration patterns that override default DM instincts.
    - **world.md:** Load in full — World Foundations, Three Truths, and factions inform narration and faction moves. Do NOT read `world-seeds.md` at load (generation artifact, not live reference).
    - **world-nodes.md (imported campaigns only):** Do **NOT** load at session start. It holds the full Quest Seed Bank and Adventure Nodes for the whole module; read only the current act's nodes on demand when a scene needs them. If the file is absent (dynamic/sandbox, or an older import), there is nothing to lazy-load — `world.md` already carries the nodes, unchanged from prior behavior.
@@ -145,9 +148,11 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 
       For fresh (non-legacy) campaigns: skip the offer entirely — there's nothing to compress yet, and the going-forward rule covers all future entries.
 
-   6. Re-run scene-context (now populated). Then proceed to step 7 (recap).
+   6. Re-run scene-context (now populated). Then proceed to step 6.5.
 
-7. Deliver one in-character paragraph recapping current situation — where the party is, what's at stake, what was last happening.
+6.5 **Mechanical recap diff.** Run `python3 ${CLAUDE_SKILL_DIR}/scripts/session_recap.py diff --campaign <name>` and inject the output line as the mechanical half of the step-7 recap (HP deltas, conditions, slots — computed from data so the narration never hallucinates them). `diff` auto-advances the baseline, so this one call both reports last session's changes and re-baselines for the next one. First-ever load (no baseline yet — diff reports it): run `session_recap.py snapshot --campaign <name>` instead and skip the mechanical half this once.
+
+7. Deliver one in-character paragraph recapping current situation — where the party is, what's at stake, what was last happening. Fold in the step-6.5 mechanical line and, from session-tail.md, the final stretch of last session.
 8. Enter active DM mode — no `/dm:dnd` prefix needed from this point.
 
 ---
@@ -299,17 +304,61 @@ and the imported party sheets.
      format; premise.py does its own rolling, so you are mirroring the log format, not calling dice.py).
    - If the host supplied a premise verbatim, still run the script for tone resolution but
      use the supplied premise instead of the rolled axes.
+0.7 **Read the party (before authoring anything).** Read every sheet in
+   `~/.claude/dnd/campaigns/<name>/characters/` — and confirm with the host if the dir is
+   empty (prep binds the bible to the party, so the party comes first). For each PC,
+   extract: level, class/subclass, key equipment, the `## Character Pillar` (raw sentence
+   + derived pillar), and `## Backstory & Notes`. Record `party.size` and
+   `party.start_level` for the spine (step 2) — never assume a level-1 start; if any PC
+   is above level 1, the spine's leveling and banding run from the real `start_level`.
+   Then bind the bible to them:
+   - **World:** at least one faction, node, or mystery element must connect to each PC's
+     pillar or backstory (a place they're from, a person they owe, an order that wants
+     what they have). Log the binding in `world.md → ## Party Hooks` (one line per PC:
+     pillar → which world element carries it).
+   - **Spine:** at least one beat's `situation` or `secret` must engage each PC's pillar;
+     `gear` rewards must be usable by the actual party's classes.
+   - **Quest seeds:** derive at least one seed per PC from their pillar, alongside the
+     threat/faction/mystery seeds.
+   If a PC has no pillar (player skipped), bind to class/background instead — never
+   invent a pillar (matches `character new` step 2).
 1. **World layer.** Fill `templates/world.md` (Factions with Goals/Methods/Resources/
    Opposition/Secret/Current-activity/Attitude; Adventure Nodes as *situations, not plots*;
-   Three Truths per element). Write to the campaign's `world.md`.
-2. **Spine.** Choose a beat count (6–8), split across the fixed 3 acts. For each beat, get
-   the legal monster candidates:
+   Three Truths per element; `## Party Hooks` per step 0.7). Fill the remaining Tone &
+   Genre knobs (magic level / setting type / danger level) coherently with the premise
+   scaffold's setting axis, and log any you randomize in the `d6=N → result` format.
+   Write to the campaign's `world.md`.
+1.5 **NPC layer.** For every NPC named anywhere in `world.md` (factions' leaders, the
+   mystery's actors, node stakeholders) — minimum 3 — write a full entry to `npcs-full.md`
+   (same fields as `/dm:dnd new` step 11: role, stats, demeanor, motivation, secret,
+   speech quirk, faction, current goal, schedule, personality axes, ≥2 relationships) and
+   an index row to `npcs.md`. Run the name-registry uniqueness check on each (as `new`
+   does). Every spine `world_pressure` that names an actor must name one of these NPCs
+   or factions.
+2. **Spine.** Choose a beat count (6–8), split across the fixed 3 acts. Write the
+   required `party` block from step 0.7 (`{"size": N, "start_level": N}`) — the schema
+   rejects a spine without it. For each beat, get the legal monster candidates:
    `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/bestiary.py --level <party-level-at-beat>`
-   Pick what is *dramatic* from the in-band list only. Author each beat per the schema in
-   `templates/spine.md`: situations-not-objectives, ≥3 hooks (rule of three), causal
-   first-domino chain, absolute `level_up_to` (monotonic, final non-null, arc ends ≈ L8),
-   `gear`, `threats` (exact MM names), `secret` (prose or null), `status: pending`. Write
-   the bible to the canonical path `~/.claude/dnd/campaigns/<name>/spine.json`.
+   — where the party's level *during* each beat runs from `party.start_level` (not 1),
+   raised by prior beats' `level_up_to`. Pick what is *dramatic* from the in-band list
+   only; prefer creatures whose type and flavor fit the tone and premise — the band is a
+   legality gate, not a menu order. Author each beat per the schema in
+   `templates/spine.md`: situations-not-objectives, ≥3 hooks (rule of three — defined in
+   `templates/spine.md`), causal first-domino chain, absolute `level_up_to` (monotonic,
+   every value above `start_level`, final non-null, arc ends ≈ L8), `gear` (usable by the
+   actual party's classes), `threats` (exact MM names with counts — `"3x Goblin"`; shape
+   each fight deliberately for `party.size`: one at-ceiling solo, a banded pair, or a mob
+   of low-CR minions — the schema bands the species, you band the action economy),
+   `secret` (prose or null), `status: pending`.
+   **Difficulty** (from the command arg, default `standard`) shifts the authoring, not
+   the band: `easy` → pick from the lower half of each band, solos below ceiling;
+   `standard` → mixed picks across the band; `deadly` → ceiling picks and paired
+   at-band threats are fair game.
+   **Bind the spine to the world layer:** every beat's `world_pressure` must name a
+   faction or NPC that exists in `world.md` / `npcs-full.md` (step 1.5). Anchor each
+   beat's `situation` at or adjacent to an Adventure Node or named world.md location —
+   the spine is the story that moves *through* the world layer, not a second world.
+   Write the bible to the canonical path `~/.claude/dnd/campaigns/<name>/spine.json`.
 3. **Validate — hard gate.** `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/schema.py --bible ~/.claude/dnd/campaigns/<name>/spine.json`
    If it prints `INVALID`, fix every listed error and re-run. Never proceed on an invalid spine.
 4. **Asset shopping lists.** In a SEPARATE pass told "describe the asset only, never why
@@ -324,19 +373,23 @@ and the imported party sheets.
    `python3 ${CLAUDE_SKILL_DIR}/scripts/render_assets.py --campaign <name>`
    These lists ship in the artifacts the host reads. Keep every hint acquirable and every
    description spoiler-free.
-5. **Scaffold campaign files.** Copy `npcs.md` and `session-log.md` from
-   `${CLAUDE_SKILL_DIR}/templates/` into the campaign dir (empty). Write `state.md` from the
-   template: header `Session count: 0` and `**Ruleset:**` from step 0; `## Current Situation →
-   Location` = the setting of spine beat 1's `situation`; seed `## World State` (in-world date,
-   `Threat arc stage: 1 — Now`, one-line faction states) exactly as `/dm:dnd new` steps 7–10
-   produce.
+5. **Scaffold campaign files.** Copy `session-log.md` from `${CLAUDE_SKILL_DIR}/templates/`
+   into the campaign dir (empty). (`npcs.md` / `npcs-full.md` were written at step 1.5.)
+   Write `state.md` from the template: header `Session count: 0` and `**Ruleset:**` from
+   step 0; `## Current Situation → Location` = the setting of spine beat 1's `situation`;
+   seed `## World State` (in-world date, `Threat arc stage: 1 — Now`, one-line faction
+   activity) exactly as `/dm:dnd new` steps 7–10 produce.
 6. **Seed the authored arc.** In `state.md → ## Campaign Arc`, write the **AUTHORED ARC** block
    as **active, uncommented YAML** (strip all leading `#` comment markers from the template;
    the seeded arc must be live, not commented-out). Populate: `type: authored`, `spine_file: spine.json`,
    `generated: <today's date>`, `theme`/`resolution` verbatim from the spine, `current_beat: 1`,
    `outstanding_beats` = every beat id, a `beats:` mirror (one entry per spine beat carrying
    `id`/`act`/`label`/`what_changes`/`world_pressure`/`status` — beat 1 `status: current`,
-   the rest `pending`), and `steering_notes` authored for beat 1. **Delete the DYNAMIC and
+   the rest `pending`), and `steering_notes` authored for beat 1. The seeded
+   `steering_notes` must carry the current-beat payload (same contract as `beat complete`
+   step 2): (a) beat 1's `situation` in one sentence, (b) its `threats` list verbatim,
+   (c) its `secret` on the **last line** (or `secret: none`). state.md is DM-side and
+   sealed from the host (step 7), so this leaks nothing. **Delete the DYNAMIC and
    STRUCTURED blocks** from the template so only the authored block remains (mirrors the
    structured-import deletion at the `import` command).
 7. **Seal.** Tell the host: `world.md` / `spine.json` / `state.md` are sealed ("don't read your
@@ -347,13 +400,26 @@ and the imported party sheets.
 
 Advance the spine when the host signals the current beat is done.
 
+0. **Mirror check (deterministic).** Run
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/mirror_check.py --campaign <name>`.
+   On `MISMATCH`, stop, show both sides, and reconcile with the host — do not silently
+   pick a winner. This is the only moment both files are open anyway; drift caught here
+   is drift that never reaches steering or leveling.
 1. **Advance the spine.** In `spine.json`, mark the beat `status: complete`; set the next
    beat `status: current` (if any).
 2. **Sync state.md.** In `state.md → ## Campaign Arc`: set `current_beat` to the next beat's
    id, sync `beats[].status`, drop the completed id from `outstanding_beats`, regenerate
-   `steering_notes`. Final beat → set `current_beat: null` and append a one-line completion
-   note (arc name, date, closing beat id) to the existing `## Arc History` section of
-   state.md.
+   `steering_notes`. While `spine.json` is open, read the **new current beat's** full
+   entry and load the mirror's `steering_notes` with the current-beat payload: (a) the
+   beat's `situation` in one sentence, (b) its `threats` list verbatim, (c) its `secret`
+   on the **last line** (or `secret: none`). The current beat's spine entry is
+   table-state; the rest of the spine is cold storage. state.md is DM-side and sealed
+   from the host, so this leaks nothing.
+   Final beat → set `current_beat: null`, append a one-line completion note (arc name,
+   date, closing beat id) to the existing `## Arc History` section of state.md, then ask:
+   *"The arc is complete. Continue with a new arc? [y/n]"* — **yes** → run
+   `/dm:dnd arc new` (the successor arc is generated in **dynamic** format from the
+   resolved world; the spine was a one-arc artifact); **no** → set `type: sandbox`.
 3. **Milestone leveling.** If `level_up_to` is non-null, per party sheet: mark pending with
    `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/milestone.py --sheet <sheet> --level <level_up_to>`,
    then run `/dm:dnd level up` **once per level** to `level_up_to` (spine may jump >1 level,
@@ -364,6 +430,15 @@ Advance the spine when the host signals the current beat is done.
 ---
 
 ## `/dm:dnd save`
+
+**Session boundary — define it once, here.** If this save is creating a new `## Session N`
+entry in session-log.md (i.e. the **first save since load**), set N = header
+`Session count` + 1, write the entry under that N, and update the state.md header:
+`Session count: N`, `Last session: <today>`. Later saves in the same sitting update the
+existing `## Session N` entry and do **not** bump the header. Every time-stamped
+mechanism — graph `--since`, log archival, legacy detection, registry stamps — keys off
+this counter.
+
 Write session events to session-log.md, update state.md (location, active quests, party HP/resources, recent events), update any characters/*.md that changed. Mirror each updated character to global roster (`~/.claude/dnd/characters/<name>.md`).
 
 **Inspiration tracking:** On every save, record each PC's Inspiration state in `state.md → ## Current Situation → Party status`. Use explicit text: `Inspiration ✓` if held, omit or `No Inspiration` if not. Inspiration persists across sessions and is NOT cleared by long rests. Example: `Mara: HP 24/24. Inspiration ✓. Theo: HP 24/24.`
@@ -374,6 +449,14 @@ Write session events to session-log.md, update state.md (location, active quests
 - **NPC dispositions:** each NPC with changed or notable standing. Format: `[Name]: [disposition] — [one-line reason]`. Remove NPCs who have returned to baseline.
 
 If nothing changed in a category this session, leave it as-is. If a fact was wrong in the previous save, correct it.
+
+**Pillar hooks:** for each PC whose Character Pillar was touched this session (a scene,
+NPC, or complication aimed at it — see SKILL.md Standard 9), update the `Active hooks`
+line in their sheet's `## Character Pillar` (one line: how it's currently in play).
+
+**NPC goals:** for NPCs who acted or were acted on this session, refresh the
+`Current goal` line in their npcs-full.md entry — an NPC can't pursue a goal nobody
+updates.
 
 **Structured (imported) campaigns — keep the arc window and arc.md in sync.** When a chapter advances this session: mark the completed chapter `status: complete` in `arc.md`, set the new chapter `status: current`, and update `state.md → ## Campaign Arc` so its `current_chapter`, `current_chapter_detail`, `next_chapter`, and `outstanding_beats` reflect the new window. The full tree stays in `arc.md`; `state.md` carries only the current + next chapter so the load stays light. If no chapter advanced, only update `outstanding_beats`/`steering_notes` inline in `state.md` — no need to touch `arc.md`. (Dynamic/sandbox campaigns have no `arc.md`; update the inline arc in `state.md` as before.)
 
@@ -388,6 +471,30 @@ Then update `## Faction Moves` in state.md: for each active faction, answer *"wh
 1. Write `~/.claude/dnd/campaigns/<name>/session_tail.json` — this session's 5–8 most important narrative beats as a JSON list of `{"text": "...", "_camp": "<name>"}` entries.
 2. Also write `~/.claude/dnd/campaigns/<name>/session-tail.md` (human-readable snapshot — companion to the JSON, used as fallback if the JSON read fails).
 
+**Campaign-graph relationship-shift sweep (runs BEFORE log archival — the compression
+rule below assumes this session's edges are already in the graph):** scan this session's
+narration for relationship shifts that weren't captured live via `/dm:dnd graph add-edge`
+/ `close-edge`. Look for moments matching these patterns:
+
+- New alliance, betrayal, or rivalry between named NPCs / factions ("Velkyn now serves the Pale Court")
+- An NPC moving into / out of a location ("Mira fled the Citadel for the Lowmarket")
+- A faction taking control of (or losing) a place ("House Tarn lost the silver mine")
+- A character learning a secret ("the party now knows Velkyn was the spy")
+- A quest / thread ending or being blocked
+
+For each candidate, draft an `add-edge` or `close-edge` call. Then **present the batch to the DM as a numbered list** and ask: *"Apply all? [y / pick / skip]"*
+
+- `y` → run all proposed calls via `python3 ${CLAUDE_SKILL_DIR}/scripts/campaign_graph.py ...`
+- `pick` → DM names the numbers to apply (e.g. `1, 3, 5`); skip the rest
+- `skip` → don't apply any
+
+Always supply `--since <current-session-N>` from state.md. Never write proposed edges
+silently. (The micro-save's live `add-edge` discipline is the one exception, and it is
+scoped: only edges explicitly narrated on-screen this scene; anything inferential waits
+for this sweep.)
+
+If `graph.json` doesn't exist yet for this campaign, skip the sweep entirely (no proposal block) — graph isn't seeded.
+
 **Session log archival (run on every save after session count > 3):**
 session-log.md keeps only the **2 most recent full session entries**. Older entries move to `session-log-archive.md` (append, never delete). Before archiving each entry, extract a 3–5 bullet continuity summary and write it to `## Continuity Archive` in state.md. Format:
 
@@ -399,7 +506,7 @@ session-log.md keeps only the **2 most recent full session entries**. Older entr
 - [Item acquired with story significance, plot beat, atmospheric/decision moment]
 ```
 
-**Going-forward Continuity Archive compression rule (from 2026-05-07; applies when `graph.json` exists for the campaign):** When `graph.json` is present, the Continuity Archive bullets must NOT restate relational state that the graph holds canonically. Specifically, **omit** bullets/clauses that say:
+**Going-forward Continuity Archive compression rule (from 2026-05-07; applies when `graph.json` exists for the campaign):** When `graph.json` is present, the Continuity Archive bullets must NOT restate relational state that the graph holds canonically. Drop a relational bullet **only when its edge is confirmed present** — it appeared in the just-approved sweep batch above or in an earlier session's graph; a `skip`ped proposal means the bullet stays. If in doubt, keep the bullet. Specifically, **omit** bullets/clauses that say:
 - "X is allied with Y" / "X is hostile to Y" / "X is friendly with Y" — already a typed edge with `--since N` and source-anchor
 - "X is a member of faction F" / "X works for Y" / "X reports to Y" — already a `member_of` / `works_for` / `reports_on` edge
 - "Z saw the party's faces" / "K is now in the Kept profile" — already a `hostile_to` / `surveils` edge with `--since`
@@ -419,36 +526,18 @@ Treat each bullet as one sentence with one job. If the only job is "restate a gr
 
 The continuity summary is what stays hot in context. The full verbose log is in the archive, readable on `/dm:dnd recap` or explicit request. When a past detail surfaces mid-scene, check `## Continuity Archive` first, then `/dm:dnd graph scene-context` for relational context, then read session-log-archive.md if more depth is needed.
 
-**Campaign-graph relationship-shift sweep:** before completing the save, scan this session's narration for relationship shifts that weren't captured live via `/dm:dnd graph add-edge` / `close-edge`. Look for moments matching these patterns:
-
-- New alliance, betrayal, or rivalry between named NPCs / factions ("Velkyn now serves the Pale Court")
-- An NPC moving into / out of a location ("Mira fled the Citadel for the Lowmarket")
-- A faction taking control of (or losing) a place ("House Tarn lost the silver mine")
-- A character learning a secret ("the party now knows Velkyn was the spy")
-- A quest / thread ending or being blocked
-
-For each candidate, draft an `add-edge` or `close-edge` call. Then **present the batch to the DM as a numbered list** and ask: *"Apply all? [y / pick / skip]"*
-
-- `y` → run all proposed calls via `python3 ${CLAUDE_SKILL_DIR}/scripts/campaign_graph.py ...`
-- `pick` → DM names the numbers to apply (e.g. `1, 3, 5`); skip the rest
-- `skip` → don't apply any
-
-Always supply `--since <current-session-N>` from state.md. Never write proposed edges silently.
-
-If `graph.json` doesn't exist yet for this campaign, skip the sweep entirely (no proposal block) — graph isn't seeded.
-
 ---
 
 ## `/dm:dnd end`
 1. Run `/dm:dnd save`, then:
    a. Append **Session Recap** block to session-log.md with key events and open threads.
    b. Ask: *"Quick calibration — what worked this session, and what would you adjust next time?"* Write answers to `### DM Calibration`. If skipped, leave blank.
-   c. Update `## World State` in state.md: check whether events advanced the threat arc stage, shifted faction states, or changed the in-world date. Update all three.
+   c. Update `## World State` in state.md: check whether events advanced the threat arc stage, shifted faction activity, or changed the in-world date. Update all three.
    d. If the calibration response reveals a new pattern (or confirms/contradicts an existing one), update `## DM Style Notes` in state.md. Add new bullets; refine existing ones if the pattern has sharpened. Do not log every session — only update when something genuinely new or changed is observed.
-   e. **Arc check** (dynamic arcs only — skip for sandbox/structured): If `## Campaign Arc` has `type: dynamic`, do all of:
+   e. **Arc check** (dynamic **and authored** arcs — skip for sandbox/structured): If `## Campaign Arc` has `type: dynamic` or `type: authored`, do all of:
 
       i. Ask: *"Did any arc beats land this session? [beat id(s) like '1b 2a', or 'none']"*
-      ii. If beats landed: run `/dm:dnd arc advance <beat-id>` for each.
+      ii. If beats landed: run `/dm:dnd arc advance <beat-id>` for each (authored: run `/dm:dnd beat complete <id>` instead of `arc advance`).
       iii. **Pre-emption check (critical — added 2026-05-01):** for each remaining outstanding beat whose `world_pressure` was visibly delivered this session (the world event named in the beat actually appeared in narration or Faction Moves), evaluate whether the beat's `what_changes` consequence ALSO landed. Three possible states:
         - **Landed cleanly** → mark beat complete (step ii).
         - **Did not land — pressure absorbed without consequence** → the beat is overdue and its current shape no longer fits. **Run `/dm:dnd arc revise` immediately**; do not just update `steering_notes`. The beat's `what_changes` was event-shaped (something specific happens) when it should be consequence-shaped (something fundamentally different is true) — revise both `what_changes` and `world_pressure` to fit a path that DOES land. The committed shape bends; it does not break.
@@ -509,10 +598,10 @@ Read `~/.claude/dnd/campaigns/*/state.md`, print summary table: campaign name | 
 
 ## `/dm:dnd character new [campaign-name]`
 
-**Read the campaign's ruleset first** — `python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py` is not a CLI; instead inline-read with:
+**Read the campaign's ruleset first** — `paths.py` is a CLI (same call as load step 3):
 
 ```bash
-python3 -c "import sys; sys.path.insert(0,'${CLAUDE_SKILL_DIR}/scripts'); from paths import campaign_ruleset; print(campaign_ruleset('<campaign>'))"
+python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py campaign-ruleset <campaign>
 ```
 
 The result drives branching at steps 1 (ASI source), 4 (origin feat), and 5 (subclass timing). The default `2014` applies for legacy campaigns predating the ruleset field.
@@ -601,7 +690,7 @@ Read `characters/<name>.md`, display cleanly. If name omitted and one character 
   When **/dm:dnd new** generates a batch of NPCs during world-gen, run the check on each generated name in the same loop: if duplicate, regenerate that name (re-prompt the LLM with the prior name added to a "do-not-pick" exclusion list). After world-gen completes, batch-call `name_registry.py add` for every accepted NPC.
 
 ## `/dm:dnd npc attitude <name> <shift>`
-Find NPC in npcs.md, shift attitude one step (hostile → unfriendly → neutral → friendly → allied), log reason and date.
+Find NPC in npcs.md, shift attitude one step (hostile → suspicious → neutral → friendly → allied — the same five-word scale as Faction stances), log reason and date.
 
 ## `/dm:dnd npc rename "Old Name" <"New Name" | random> [flags]`
 Rename a character across an entire campaign — `npcs.md`, `npcs-full.md`, `state.md` (every section), `session-log.md`, `graph.json` (node + edges preserved), and `characters/<slug>.md` if `--type pc`. Backs up the campaign first.
@@ -660,7 +749,7 @@ Run `scripts/dice.py <notation>`. Display output verbatim. Examples: `d20`, `2d6
    ```
 3. Save STATE_JSON to `state.md` under `## Active Combat`.
 4. Step through turns using the per-turn sequence (in SKILL.md Active DM Mode).
-5. On combat end: update HP in character sheets, clear `## Active Combat`, narrate aftermath, run `tracker.py -c <campaign> clear`.
+5. On combat end: update HP in character sheets, clear `## Active Combat`, narrate aftermath, run `tracker.py -c <campaign> clear`, and re-run `render_tracker.py` once with the final state and a "combat ended" marker (or clear tracker.html) — the meta-refresh dashboard otherwise keeps showing a live fight that's over.
 
 **No XP.** This is a milestone-leveling fork — combat end awards no XP. Leveling happens only at
 `/dm:dnd beat complete`. Narrate loot/consequences in the aftermath send; do not send an XP block.
@@ -695,9 +784,9 @@ Read `state.md` → display Active Quests and Open Threads sections.
 
 ## `/dm:dnd arc [status|advance|revise|view]`
 
-Manage the dynamic campaign arc. The `advance`/`revise`/`new` subcommands are active only when `state.md → ## Campaign Arc` has `type: dynamic` — no-op for sandbox campaigns. For **structured (imported)** campaigns, `status` and `view` read from `arc.md` (chapter advancement happens at `/dm:dnd save`, not here); `advance`/`revise`/`new` are no-ops.
+Manage the dynamic campaign arc. The `advance` and `new` subcommands are active only when `state.md → ## Campaign Arc` has `type: dynamic`; `revise` is active for `type: dynamic` **and `type: authored`** (authored branch below) — all are no-ops for sandbox campaigns. Authored beat completion goes through `/dm:dnd beat complete`, and a completed authored arc offers `arc new` from there (the successor arc is generated in dynamic format). For **structured (imported)** campaigns, `status` and `view` read from `arc.md` (chapter advancement happens at `/dm:dnd save`, not here); `advance`/`revise`/`new` are no-ops.
 
-- **`/dm:dnd arc`** or **`/dm:dnd arc status`** — print current act, current beat label, `what_changes` for the current beat, and `steering_notes`. Quick reference, one screen. (Structured: print `current_act`, `current_chapter`, current chapter's `key_beats`, and `outstanding_beats` from `state.md`; read `arc.md` only if more detail is asked for.)
+- **`/dm:dnd arc`** or **`/dm:dnd arc status`** — print current act, current beat label, `what_changes` for the current beat, and `steering_notes`. Quick reference, one screen. (Authored: **omit the `secret` line when printing `steering_notes`** — in solo play the host is the player, and the secret exists purely to be discovered in play.) (Structured: print `current_act`, `current_chapter`, current chapter's `key_beats`, and `outstanding_beats` from `state.md`; read `arc.md` only if more detail is asked for.)
 - **`/dm:dnd arc advance [beat-id]`** — mark the named beat complete (current beat if omitted). Remove from `outstanding_beats`. Advance `current_beat` to the next pending beat. If all beats in an act are complete, advance `current_act`. Update `steering_notes` to describe how to reach the newly current beat without forcing it.
 
   **When the final beat (3b) is marked complete — arc continuation:**
@@ -728,8 +817,29 @@ Manage the dynamic campaign arc. The `advance`/`revise`/`new` subcommands are ac
      - **Secondary consequence path** — `what_changes` becomes "the world responded to being pre-empted in a way the party didn't anticipate"; `world_pressure` becomes the new escalation (the antagonist reads the disruption as a signal and does something WORSE). Best when the antagonist is intelligent and adaptive.
      - **Deferred path** — keep the original `what_changes` shape; rewrite `world_pressure` to a NEW pressure pointing at the same consequence, scheduled for the next 1–2 sessions. Best when the original consequence is still narratively essential and only the timing slipped.
   4. Rewrite `what_changes` (consequence-shaped per the rule in /dm:dnd new step 12) and `world_pressure` (event-shaped is fine) for the affected beat. Do NOT modify completed beats.
+
+     **Authored arcs — write-back ordering contract (the sync is always spine→state, one
+     direction; the spine stays the sole prose authority):**
+     1. Write the revised `what_changes`/`world_pressure` to the matching beat in
+        **`spine.json` first**.
+     2. Re-run the schema gate:
+        `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/schema.py --bible ~/.claude/dnd/campaigns/<name>/spine.json`
+        (revise only touches two prose fields, so this always passes unless the edit
+        broke structure — which is exactly when you want to know).
+     3. Regenerate the state.md mirror entry **from the just-written spine**, not from
+        context — including the `steering_notes` current-beat payload if the revised
+        beat is the current one.
+     4. `revision_log` is appended in state.md only (spine.json gets no new fields).
   5. Append to `revision_log`: `"<date>: <beat-id> — <path: cost/secondary/deferred> — <what changed and why — one sentence>"`
   6. Update `steering_notes` to describe the next session's expected delivery.
+  6.5 **If the revision relocates a scene or changes which NPC/faction drives it**, also:
+     update the affected `world.md → ## Adventure Nodes` entries, propose the matching
+     graph `add-edge`/`close-edge` calls in the same confirmation, and append matching
+     entries to `map-list.md` / `ambient-list.md` (same spoiler rules as prep step 4)
+     then re-run `python3 ${CLAUDE_SKILL_DIR}/scripts/render_assets.py --campaign <name>`
+     so the host's hub stays current — a relocated beat with no legal ambient cue plays
+     silent otherwise, and stale graph edges would reassert the pre-revision world after
+     a compaction.
   7. Confirm what was revised. Show before/after for `what_changes` and `world_pressure`.
 
 ---
@@ -757,6 +867,13 @@ Add a typed edge between two existing nodes. Edge type is open vocab; common: `l
 
 ### `/dm:dnd graph close-edge --id <edge-id> --at-session N`
 Mark an edge as ended at session N (e.g. when an alliance breaks). Original edge is preserved with `until_session` set; it remains visible in historical queries but is excluded from "active at session ≥ N" results.
+
+### `/dm:dnd graph supersede-edge --id <edge-id> [--by <edge-id>] [--reason "..."]`
+Hard retcon: mark an edge as **wrong from the start** (a mis-extracted or mis-narrated
+relationship), optionally pointing at the corrected edge. Distinct from `close-edge`:
+close-edge ends a state cleanly (it *was* true, then stopped); supersede-edge says the
+original edge never was true. The superseded edge is preserved for the audit trail but
+excluded from active queries at every session.
 
 ### `/dm:dnd graph list [--type T] [--at-session N]`
 Print a compact node table grouped by type. With `--at-session`, also reports active edge count at that session.
@@ -815,15 +932,21 @@ Two-word **scene-meaning** generator (action verb + subject noun, One Page Solo 
 
 ---
 
-## `/dm:dnd recap` — precomputed party state-diff
+## `recap snapshot` / `recap diff` — precomputed party state-diff (load machinery)
 
 Deterministic state-diff between two character snapshots — `python3 ${CLAUDE_SKILL_DIR}/scripts/session_recap.py`. Recaps are the #1 thing an LLM hallucinates (wrong HP, dropped facts); this computes the change set from data so narration never has to. Reads the character sheets at `~/.claude/dnd/campaigns/<name>/characters/*.md` and merges live `tracker.json` conditions/concentration. Zero LLM calls.
 
+These subcommands are **load machinery, wired at `/dm:dnd load` step 6.5** — the
+narrative `/dm:dnd recap` command above is unrelated. `diff` auto-advances the baseline,
+so one call at load prints last session's mechanical changes AND re-baselines for the
+next session, self-chaining forever. Do **not** snapshot at `/dm:dnd end` — an
+end-of-session baseline diffed at next load reports nothing.
+
 ### `/dm:dnd recap snapshot --campaign N`
-Snapshot the party's current state (HP/temp/level/hit dice/death saves/conditions/concentration/exhaustion/inspiration/spell slots) to `~/.claude/dnd/campaigns/<name>/.recap/`. Rolls the previous `last.json` to `prev.json` so the next diff has a baseline. **Take a snapshot at `/dm:dnd end`** so the next session's load can diff against it.
+Snapshot the party's current state (HP/temp/level/hit dice/death saves/conditions/concentration/exhaustion/inspiration/spell slots) to `~/.claude/dnd/campaigns/<name>/.recap/`. Rolls the previous `last.json` to `prev.json`. Needed only at the **first-ever load** (no baseline exists yet); after that, `diff` maintains the chain itself.
 
 ### `/dm:dnd recap diff --campaign N [--before FILE] [--after FILE]`
-Diff the prior snapshot against the current state and print a one-paragraph plain-English summary (e.g. *"Aldric: took 18 damage (30→12 HP); gained Poisoned; spent 2 level 1 slots."*). With no `--before`, uses the stored `prev`/`last` snapshot; with no `--after`, snapshots live state on the fly. **Inject this line at `/dm:dnd load`** as the mechanical half of the recap. `--json` emits the structured change list.
+Diff the prior snapshot against the current state and print a one-paragraph plain-English summary (e.g. *"Aldric: took 18 damage (30→12 HP); gained Poisoned; spent 2 level 1 slots."*), then advance the baseline to "now". With no `--before`, uses the stored `prev`/`last` snapshot; with no `--after`, snapshots live state on the fly. Run at every `/dm:dnd load` (step 6.5) as the mechanical half of the recap. `--json` emits the structured change list.
 
 ---
 
