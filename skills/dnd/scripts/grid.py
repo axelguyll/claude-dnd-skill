@@ -78,6 +78,63 @@ def dist_ft(a: str, b: str) -> int:
     return max(abs(c1 - c2), abs(r1 - r2)) * TILE_FT
 
 
+def expand_tiles(expr: str) -> list[tuple[int, int]]:
+    """'F1' -> [(5, 0)]; 'C3-D5' -> inclusive rectangle between the corners."""
+    parts = expr.strip().split("-")
+    if len(parts) == 1:
+        return [parse_tile(parts[0])]
+    if len(parts) != 2:
+        raise ValueError(f"Bad tile range: {expr!r}")
+    (c1, r1), (c2, r2) = parse_tile(parts[0]), parse_tile(parts[1])
+    return [(c, r)
+            for c in range(min(c1, c2), max(c1, c2) + 1)
+            for r in range(min(r1, r2), max(r1, r2) + 1)]
+
+
+def validate_spec(spec: dict) -> list[str]:
+    errors = []
+    if not spec.get("handle"):
+        errors.append("handle is required")
+    cols, rows = spec.get("cols"), spec.get("rows")
+    if not isinstance(cols, int) or not 1 <= cols <= MAX_COLS:
+        errors.append(f"cols must be an int 1-{MAX_COLS}")
+    if not isinstance(rows, int) or not 1 <= rows <= MAX_ROWS:
+        errors.append(f"rows must be an int 1-{MAX_ROWS}")
+    for i, t in enumerate(spec.get("terrain", [])):
+        try:
+            tiles = expand_tiles(t["tiles"])
+        except (KeyError, TypeError, ValueError) as e:
+            errors.append(f"terrain[{i}]: {e}")
+            continue
+        if isinstance(cols, int) and isinstance(rows, int):
+            for (c, r) in tiles:
+                if not (0 <= c < cols and 0 <= r < rows):
+                    errors.append(
+                        f"terrain[{i}]: {tile_name(c, r)} is outside the "
+                        f"{cols}x{rows} grid")
+                    break
+    return errors
+
+
+def load_spec(path) -> dict:
+    spec = json.loads(Path(path).read_text(encoding="utf-8"))
+    errors = validate_spec(spec)
+    if errors:
+        raise ValueError("; ".join(errors))
+    return spec
+
+
+def terrain_sets(spec: dict) -> tuple[set, set]:
+    difficult, impassable = set(), set()
+    for t in spec.get("terrain", []):
+        for tile in expand_tiles(t["tiles"]):
+            if t.get("difficult"):
+                difficult.add(tile)
+            if t.get("impassable"):
+                impassable.add(tile)
+    return difficult, impassable
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description="Combat-grid math.")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -86,9 +143,25 @@ def main(argv=None):
     d.add_argument("a")
     d.add_argument("b")
 
+    v = sub.add_parser("validate")
+    v.add_argument("spec")
+
     args = p.parse_args(argv)
     if args.cmd == "dist":
         print(f"{dist_ft(args.a, args.b)}ft")
+    if args.cmd == "validate":
+        try:
+            spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"INVALID\n- cannot read spec: {e}")
+            sys.exit(1)
+        errors = validate_spec(spec)
+        if errors:
+            print("INVALID")
+            for e in errors:
+                print(f"- {e}")
+            sys.exit(1)
+        print("VALID")
 
 
 if __name__ == "__main__":
