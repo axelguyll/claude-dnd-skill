@@ -132,7 +132,8 @@ class MoveTests(unittest.TestCase):
         self.assertEqual(grid.move_verdict(SPEC, "A1", "A4", 30), "OK cost=15ft")
 
     def test_diagonal_costs_5(self):
-        self.assertEqual(grid.move_verdict(SPEC, "A1", "D4", 30), "OK cost=25ft")
+        # E1 -> H4: pure diagonal, clear of the difficult band and the F1 pillar.
+        self.assertEqual(grid.move_verdict(SPEC, "E1", "H4", 30), "OK cost=15ft")
 
     def test_difficult_terrain_doubles(self):
         # A2 -> D2 must cross the full-height bog at B and C: 10 + 10 + 5.
