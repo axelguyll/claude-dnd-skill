@@ -4,6 +4,10 @@
 |------|------|---------|----------|----------|-------|
 | | | | | | |
 
+*Index rows without a matching section in npcs-full.md are **supporting cast** —
+promote to a full entry before their first substantive dialogue (see SKILL.md,
+Active DM Mode).*
+
 ---
 
 ### <Name>
