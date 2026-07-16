@@ -35,6 +35,15 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 9. **Threat Escalation Arc** — fill the five-stage table in world.md immediately after threat generation. Set current stage to 1. Write `Threat arc stage: 1 — Now` to `state.md → ## World State`.
 10. **2 Factions** — archetype, all fields including current activity. Write to `## Factions` in world.md. Write one-line faction-activity entries to `state.md → ## World State → Faction activity`.
 11. **3 NPCs with relationship web** — full entries (role, stats, demeanor, motivation, secret, speech quirk, faction, current goal, schedule, personality axes). Generate all three first, then fill Relationships (every NPC needs ≥2 links to others). Update index table.
+11.5 **Supporting cast.** Seed 6–8 index-only NPCs anchored to the settlement and the
+   Three Truths locations — the places the party will actually walk (innkeeper, gate
+   sergeant, fence, ferryman, market fixture). One row each in the npcs.md index table
+   (Name / Role / Faction or "independent" / Location / Attitude / Notes); the Notes
+   field carries exactly one distinct, playable trait (a verbal tic, a visible
+   contradiction, a small motivation — *"counts coins twice, hums when lying"*).
+   No npcs-full.md entry and no relationship-web requirement. Run the name-registry
+   uniqueness check on each name (as step 11 does). They are promoted to full entries
+   on demand during play — see the promotion rule in SKILL.md (Active DM Mode).
 12. **3–5 Quest Seeds** from threat, factions, mystery, NPC motivations. Write to `## Quest Seed Bank` in world.md.
 13. **Dynamic Campaign Arc** — auto-generate the arc from all world data just created. Use Opus for this step. Ask: *"Generate a committed narrative arc? [y/n — recommended]"*
 
@@ -335,6 +344,12 @@ and the imported party sheets.
    an index row to `npcs.md`. Run the name-registry uniqueness check on each (as `new`
    does). Every spine `world_pressure` that names an actor must name one of these NPCs
    or factions.
+
+   Then the supporting cast: seed 6–8 additional index-only NPCs anchored to the
+   settlement and Adventure Nodes — **new names only** (anyone already named in
+   world.md got a full entry above; this pass adds breadth, not duplicates). Same row
+   format, same one-distinct-trait Notes rule, and same name-registry check as `new`
+   step 11.5. No npcs-full.md entry, no relationship web.
 2. **Spine.** Choose a beat count (6–8), split across the fixed 3 acts. Write the
    required `party` block from step 0.7 (`{"size": N, "start_level": N}`) — the schema
    rejects a spine without it. For each beat, get the legal monster candidates:

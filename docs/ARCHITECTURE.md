@@ -144,7 +144,7 @@ All under `~/.claude/dnd/campaigns/<name>/` unless noted:
 | `state.md` | DM prose (save/end/micro-save); seeded by new/import/prep | Fully at load; targeted sections re-read after compaction |
 | `world.md` | new/import/prep; rarely updated after | Fully at load |
 | `world-nodes.md` | import (structured only) | Lazy — current act's nodes on demand |
-| `npcs.md` (index) / `npcs-full.md` | DM prose as NPCs appear/change | Index at load; full entry before voicing an NPC |
+| `npcs.md` (index) / `npcs-full.md` | DM prose as NPCs appear/change; two-tier seeding at `new` (3 full + 6–8 supporting) and `prep` (coverage-driven full + 6–8 supporting, step 1.5) | Index at load; full entry before voicing an NPC |
 | `session-log.md` / `session-log-archive.md` | save (keeps 2 recent entries; older → archive) | NOT at load; recap/explicit request |
 | `characters/<pc>.md` (+ global roster `~/.claude/dnd/characters/`) | character new/import, level up, per-turn HP/slots persistence | At load |
 | `spine.json` (authored) | prep; `beat complete` flips statuses | Only at `beat complete` |
@@ -159,6 +159,9 @@ All under `~/.claude/dnd/campaigns/<name>/` unless noted:
 | `tracker.html`, `assets.html` | render scripts | Host's browser only |
 | `~/.claude/dnd/.name_registry.json` | name_registry.py | Name checks at new/npc/rename |
 | `<runtime-dir>/active-campaign.json` | load step 5 (`name` + `skill_dir` keys) | autosave_checkpoint.py (`name` only); the DM's post-compaction skill-dir recovery anchor (`skill_dir`) |
+
+> NPC-tier membership is structural, not a field: an NPC is **core** iff it has an
+> `npcs-full.md` section, **supporting** otherwise — no tier column to drift out of sync.
 
 ---
 

@@ -212,6 +212,16 @@ by `render_assets.py`; sound cues at the table may only reference handles on the
 list.
 _Avoid_: "catalog", "asset pipeline" — these are lists the host shops from by hand.
 
+**Supporting cast**:
+The cheap NPC tier: an index-only row in npcs.md (Name/Role/Faction/Location/Attitude/
+Notes with exactly one distinct playable trait) and **no npcs-full.md section** — that
+absence *is* the tier marker; there is no tier column. Seeded 6–8 at creation by both
+`/dm:dnd new` (step 11.5) and `/dm:dnd prep` (step 1.5 supporting pass), and by default
+for NPCs improvised mid-scene. Promoted one-way to a full entry before their first
+substantive dialogue (SKILL.md, Active DM Mode).
+_Avoid_: "minor NPC", "background NPC" (undefined); calling a promoted NPC "supporting"
+after their full entry exists.
+
 ## Language — state
 
 **Live State Flags**:

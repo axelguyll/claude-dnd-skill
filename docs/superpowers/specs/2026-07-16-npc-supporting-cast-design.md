@@ -47,7 +47,7 @@ already how the prose thinks.
 
 ### Seeding sites
 
-1. **`/dm:dnd new` — new step 11b** (after the 3-NPC relationship web, before quest
+1. **`/dm:dnd new` — new step 11.5** (after the 3-NPC relationship web, before quest
    seeds): generate 6–8 supporting-cast rows anchored to the settlement and Three
    Truths locations — the places the party will actually walk (innkeeper, gate
    sergeant, fence, ferryman, market fixture). One index row each; registry check each;
@@ -71,7 +71,7 @@ default and follow the same promotion rule.
 
 ## Files touched
 
-- `skills/dnd/SKILL-commands.md` — `new` step 11b; prep step 1.5 addendum.
+- `skills/dnd/SKILL-commands.md` — `new` step 11.5; prep step 1.5 addendum.
 - `skills/dnd/SKILL.md` — promotion sentence added to the read-before-dialogue bullet.
 - `skills/dnd/templates/npcs.md` — header note: index rows without a full entry are
   supporting cast; promote before substantive dialogue.
