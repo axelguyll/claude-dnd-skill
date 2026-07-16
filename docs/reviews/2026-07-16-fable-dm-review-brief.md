@@ -212,7 +212,7 @@ Nothing else gets edited without owner approval.
 - [x] **A** — Orient & map → `docs/ARCHITECTURE.md` + compass (done 2026-07-16)
 - [x] **B** — Domain-modeling → `CONTEXT.md` + ADRs 0001-0005 + `docs/adr/README.md` lineage note (done 2026-07-16)
 - [x] **C** — D1 prep-phase review → findings-d1 (done 2026-07-16; 11 findings, 3 HIGH — party sheets unread, L1 hardcode, zero prep NPCs)
-- [ ] **D** — D2 DM-humanness review (+ research) → findings-d2
+- [x] **D** — D2 DM-humanness review (+ research) → findings-d2 (done 2026-07-16; 12 findings, 3 HIGH — authored arcs orphaned from steering/pre-emption gates, spine situation/threats/secret never read in play, Character Pillar unconsumed at table)
 - [ ] **E** — D3 architecture-coherence review → findings-d3
 - [ ] **F** — Synthesis → summary + priorities
 
