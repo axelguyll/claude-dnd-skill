@@ -199,7 +199,7 @@ Starting seeds:
 Nothing else gets edited without owner approval.
 
 ## Session ledger (update at the end of each session)
-- [ ] **A** — Orient & map → `docs/ARCHITECTURE.md` + compass
+- [x] **A** — Orient & map → `docs/ARCHITECTURE.md` + compass (done 2026-07-16)
 - [ ] **B** — Domain-modeling → `CONTEXT.md` + ADRs
 - [ ] **C** — D1 prep-phase review → findings-d1
 - [ ] **D** — D2 DM-humanness review (+ research) → findings-d2
