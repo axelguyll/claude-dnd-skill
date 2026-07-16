@@ -22,6 +22,17 @@ Versions before **1.6.0** are reconstructed retroactively from git history; the 
   convention, and tutor mode continues as a chat blockquote. For solo/
   small-table play driven entirely from the terminal.
 
+## [2.4.0] — 2026-07-16 — Combat grid + map cue; supporting-cast NPC tier
+
+- Combat grid for mapped scenes: per-map grid spec (`maps/<handle>.grid.json`,
+  authored at prep, host-confirmed dims at first use), `grid.py` math engine
+  (movement/range/AoE, 5-ft diagonals), positions in STATE_JSON.
+- Map cue block (`🗺 **Map:**`) mirroring the sound cue; player-facing projector
+  page `map.html` via `render_map.py` (tokens, hidden combatants excluded,
+  idle screen between fights). Tracker shows positions.
+- Supporting-cast NPC tier: 6–8 index-only NPCs seeded at `new` and `prep`,
+  promoted to full entries before first substantive dialogue.
+
 ## [2.3.0] — 2026-06-27 — Zero-LLM continuity tools: deterministic recap, solo oracles, scene bangs, one-shot graph apply
 
 - **Precomputed session recaps (deterministic, zero-LLM).** A new `scripts/session_recap.py` snapshots party state — HP/temp/level/hit dice/death saves/conditions/concentration/exhaustion/inspiration/spell slots — to JSON and diffs two snapshots into a plain-English change line (*"Aldric: took 18 damage (30→12 HP); gained Poisoned; spent 2 level 1 slots."*). It reads the character-sheet markdown and merges live `tracker.json` conditions/concentration, computing the change set from data rather than asking the model to reconstruct it — recaps are the single thing an LLM is most likely to hallucinate (wrong HP, dropped facts). Wired as **`/dm:dnd recap snapshot`** (take at `/dm:dnd end`) and **`/dm:dnd recap diff`** (inject the line at `/dm:dnd load`).

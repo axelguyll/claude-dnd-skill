@@ -60,7 +60,8 @@ prose docs are read verbatim, so every command copied from them needs manual sub
 | Script | Does | Reads / writes |
 |---|---|---|
 | `dice.py` | All die rolls (adv/dis, kh, `--attack` crit flag, `--silent`, `--label`) | stateless |
-| `combat.py` | Initiative (`init` → STATE_JSON), tracker reprint, `attack` resolution, 2024 weapon `mastery` | stateless (state carried as JSON in `state.md → ## Active Combat`) |
+| `combat.py` | Initiative (`init` → STATE_JSON), tracker reprint, `attack` resolution, 2024 weapon `mastery` | stateless (state carried as JSON in `state.md → ## Active Combat`, mapped combat adding optional per-combatant `pos`/`hidden` fields) |
+| `grid.py` | Mapped-combat math: spec validate, Chebyshev dist, Dijkstra movement (difficult ×2 / impassable), range, sphere/cube/cone/line AoE | R `<campaign>/maps/<handle>.grid.json` |
 | `tracker.py` | Conditions, concentration, timed effects, death saves | RW `<campaign>/tracker.json` |
 | `calendar.py` | In-world date/time; `advance`, `rest short/long`, `set` | RW `<campaign>/calendar.json` |
 | `character.py` | Stat-block calc, level-up HP math, XP tracking (legacy) | stateless |
@@ -91,6 +92,7 @@ prose docs are read verbatim, so every command copied from them needs manual sub
 | Script | Does | Reads / writes |
 |---|---|---|
 | `render_tracker.py` | Combat dashboard `<campaign>/tracker.html` (meta-refresh), each combat turn | R tracker.json, W tracker.html |
+| `render_map.py` | Player-facing battle map `<campaign>/map.html` (meta-refresh): map image + A1 grid overlay + tokens from STATE_JSON `pos`; `--clear` = idle screen | R grid spec + maps/ images, W map.html |
 | `render_assets.py` | Asset hub `<campaign>/assets.html` (maps + ambient toggles) from shopping lists | R map-list.md, ambient-list.md; W assets.html; ensures `maps/`, `sounds/` |
 
 > The old `display/` companion (TTS/network audio stack) was **torn down**
@@ -156,7 +158,8 @@ All under `~/.claude/dnd/campaigns/<name>/` unless noted:
 | `.recap/last.json`, `prev.json` | session_recap.py snapshot/diff | Recap diff |
 | `session_tail.json` / `session-tail.md` | save (prose-written), refreshed at micro-save, verified at end | Read at load step 5 (recap) and by the re-read ladder's "what just happened" stop — the freshest narrative record post-compaction |
 | `map-list.md`, `ambient-list.md` | prep step 4 | render_assets.py; host reads them |
-| `tracker.html`, `assets.html` | render scripts | Host's browser only |
+| `maps/<handle>.grid.json` | prep step 4 asset pass (same spoiler discipline — terrain only), hard-gated by `grid.py validate`; host-confirmed dims stamped `"confirmed": true` at first mapped-combat use | grid.py move/range/aoe every mapped-combat turn; render_map.py |
+| `tracker.html`, `assets.html`, `map.html` | render scripts | Host's browser only |
 | `~/.claude/dnd/.name_registry.json` | name_registry.py | Name checks at new/npc/rename |
 | `<runtime-dir>/active-campaign.json` | load step 5 (`name` + `skill_dir` keys) | autosave_checkpoint.py (`name` only); the DM's post-compaction skill-dir recovery anchor (`skill_dir`) |
 
@@ -197,9 +200,16 @@ All under `~/.claude/dnd/campaigns/<name>/` unless noted:
 - Per-turn combat sequence (SKILL.md:301-316): action → dice → tracker.py (+ `effect tick`)
   → narration (NPC speech in blockquote blocks) → `render_tracker.py` refresh + STATE_JSON
   written back to `state.md → ## Active Combat` each round (mid-combat compaction anchor)
-  → persist HP/slots to sheets.
+  → persist HP/slots to sheets. Mapped combat resolves position math before the dice,
+  script-first (`grid.py move`/`range`/`aoe`; illegal moves narrate the constraint and
+  offer the furthest-reachable tile, never a silent clamp) and refreshes the player-facing
+  projector page each round via `render_map.py`, fed the same STATE_JSON as
+  `render_tracker.py`.
 - Sound cues `🔊 **Cue:**` only from the campaign's ambient list; pronunciation hints on
-  first use of hard names; tutor-mode blockquote last if enabled.
+  first use of hard names; tutor-mode blockquote last if enabled. Same contract, mapped
+  combat only: the map cue `🗺 **Map:**` up at combat start (first-use dims confirmed
+  against the grid spec, host-adjustable) and down at combat end, on its own line, listed
+  handles only.
 - NPC voicing gate: read the NPC's `npcs-full.md` entry first.
 - **Micro-save (autosave on, default):** at every scene boundary + every several turns,
   silently flush: Live State Flags (+ Deeds line for any stance shift) → state.md,

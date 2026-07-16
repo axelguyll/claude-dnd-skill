@@ -212,6 +212,14 @@ by `render_assets.py`; sound cues at the table may only reference handles on the
 list.
 _Avoid_: "catalog", "asset pipeline" — these are lists the host shops from by hand.
 
+**Grid spec**:
+`<campaign>/maps/<handle>.grid.json` — cols/rows dims + terrain regions (`difficult` /
+`impassable` / `blocks_los`) for one shopping-list map. Authored at prep step 4 under
+asset-pass spoiler discipline (terrain only); host-confirmed dims at first use
+(`"confirmed": true`); hard-gated by `grid.py validate`. The spec is rules truth — the
+projected image is decoration.
+_Avoid_: "battle map" for the JSON (that's the image), "map spec".
+
 **Supporting cast**:
 The cheap NPC tier: an index-only row in npcs.md (Name/Role/Faction/Location/Attitude/
 Notes with exactly one distinct playable trait) and **no npcs-full.md section** — that
@@ -296,6 +304,18 @@ The typed-edge relationship store `graph.json` (`campaign_graph.py`): **graph no
 never replaces — `npcs-full.md` and the session log. `scene-context` is the primary
 in-play query.
 _Avoid_: bare "node" (see Adventure node), "knowledge base".
+
+**Mapped combat**:
+A fight at a location matching a `map-list.md` handle (or one the host names). Gets the
+map cue, the grid spec, `"pos"` fields in STATE_JSON, and per-turn `render_map.py`
+refreshes. Every other fight is theater of the mind — no cue, no grid, no positions.
+_Avoid_: "grid combat", "tactical mode".
+
+**Map cue**:
+The standalone chat block `🗺 **Map:** *<handle>*` (up) / `🗺 **Map:** *down — theater
+of the mind*` (down) telling the host to raise or drop the battle map. Same contract as
+the sound cue: own line, listed handles only, never invented.
+_Avoid_: inlining it into narration; cueing unlisted maps.
 
 **roll_mode**:
 Session flag deciding who rolls PC d20s: `players` (default — call for the roll and
