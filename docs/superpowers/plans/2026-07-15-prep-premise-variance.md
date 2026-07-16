@@ -257,9 +257,9 @@ git commit -m "feat(prep): add combinatorial premise seed bank"
   - `load_tones(path=None) -> list[dict]`
   - `load_seeds(path=None) -> dict`
   - `tone_by_id(tone_id, tones) -> dict | None`
-  - `roll_premise(tone_id, tones, seeds, rng) -> dict` — returns `{"tone", "descriptor", "mood_note", "setting", "conflict", "antagonist", "twist", "exemplars"}`. Raises `KeyError` if `tone_id` unknown.
-  - `format_scaffold(rolled) -> str` — human-readable block including all four axis values, the mood_note, exemplars, and the fixed reconcile instruction.
-  - CLI: `python3 premise.py --tone <id> [--seed N]` → prints scaffold; unknown tone → stderr + exit 1.
+  - `roll_premise(tone_id, tones, seeds, rng) -> dict` — returns `{"tone", "descriptor", "mood_note", "setting", "conflict", "antagonist", "twist", "exemplars"}`. If `tone_id` is `None`, rolls a tone from the catalog via `rng` (surprise-me / seal-and-walk-away path). Raises `KeyError` only if a non-None `tone_id` is unknown.
+  - `format_scaffold(rolled) -> str` — human-readable block including all four axis values, the resolved tone (so the caller knows what to stamp into `world.md`), the mood_note, exemplars, and the fixed reconcile instruction.
+  - CLI: `python3 premise.py [--tone <id>] [--seed N]` → prints scaffold; `--tone` optional (omitted → rolled from catalog); unknown non-None tone → stderr + exit 1.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -305,18 +305,35 @@ class RollTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             premise.roll_premise("nope", self.tones, self.seeds, random.Random(1))
 
+    def test_blank_tone_rolls_from_catalog(self):
+        ids = {t["id"] for t in self.tones}
+        r = premise.roll_premise(None, self.tones, self.seeds, random.Random(9))
+        self.assertIn(r["tone"], ids)
+        self.assertTrue(r["mood_note"].strip())
+
     def test_scaffold_contains_axes_and_instruction(self):
         r = premise.roll_premise("intrigue", self.tones, self.seeds, random.Random(7))
         out = premise.format_scaffold(r)
         self.assertIn(r["setting"], out)
         self.assertIn(r["antagonist"], out)
+        self.assertIn(r["tone"], out)  # resolved tone reported for world.md
         self.assertIn("Reconcile into ONE coherent premise", out)
         self.assertIn("Do not default to the nearest cliché", out)
+
+    def test_scaffold_names_the_target_trope(self):
+        r = premise.roll_premise("grimdark", self.tones, self.seeds, random.Random(2))
+        self.assertIn("sealed-mine", premise.format_scaffold(r))
 
 
 class CliTests(unittest.TestCase):
     def test_cli_good_tone_exit_zero(self):
         p = subprocess.run([sys.executable, str(SCRIPT), "--tone", "horror", "--seed", "3"],
+                           capture_output=True, text=True)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("Reconcile into ONE coherent premise", p.stdout)
+
+    def test_cli_no_tone_rolls_and_exits_zero(self):
+        p = subprocess.run([sys.executable, str(SCRIPT), "--seed", "5"],
                            capture_output=True, text=True)
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn("Reconcile into ONE coherent premise", p.stdout)
@@ -362,7 +379,8 @@ AXES = ("setting", "conflict", "antagonist", "twist")
 _INSTRUCTION = (
     "Reconcile into ONE coherent premise in the chosen tone. Discard any axis "
     "that fights the others — orthogonality is the point, coherence is your job. "
-    "Do not default to the nearest cliché."
+    "Do not default to the nearest cliché — especially avoid the frontier-town / "
+    "sealed-mine / missing-people default that this tool exists to break."
 )
 
 
@@ -383,10 +401,16 @@ def tone_by_id(tone_id: str, tones: list[dict]) -> dict | None:
     return None
 
 
-def roll_premise(tone_id: str, tones: list[dict], seeds: dict, rng: random.Random) -> dict:
-    tone = tone_by_id(tone_id, tones)
-    if tone is None:
-        raise KeyError(f"unknown tone: {tone_id!r}")
+def roll_premise(tone_id, tones: list[dict], seeds: dict, rng: random.Random) -> dict:
+    if tone_id is None:
+        # surprise-me: roll the tone too, so prep has a concrete tone to author
+        # the whole bible in. Roll tone BEFORE axes so a given seed is stable.
+        tone = rng.choice(tones)
+        tone_id = tone["id"]
+    else:
+        tone = tone_by_id(tone_id, tones)
+        if tone is None:
+            raise KeyError(f"unknown tone: {tone_id!r}")
     rolled = {axis: rng.choice(seeds["axes"][axis]) for axis in AXES}
     rolled.update(
         tone=tone_id,
@@ -420,7 +444,7 @@ if __name__ == "__main__":
     import sys
 
     ap = argparse.ArgumentParser(description="Roll a combinatorial premise scaffold for prep.")
-    ap.add_argument("--tone", required=True, help="tone id from data/tones.yaml")
+    ap.add_argument("--tone", default=None, help="tone id from data/tones.yaml (omit to roll one)")
     ap.add_argument("--seed", type=int, default=None, help="seed the roll (for reproducibility/tests)")
     args = ap.parse_args()
 
@@ -454,6 +478,8 @@ git commit -m "feat(prep): add premise composer that rolls orthogonal axes"
 
 **Files:**
 - Modify: `skills/dnd/SKILL-commands.md` (prep signature/flow `:276`+; `/dm:dnd new` tone line `:27`)
+- Modify: `skills/dnd/SKILL-scripts.md` (add `premise.py` reference entry)
+- Modify: `skills/dnd/templates/world.md:5` (tone placeholder → catalog pointer)
 - Modify: `tests/test_prep_skill_prose.py` (add prose pins)
 
 **Interfaces:**
@@ -477,6 +503,10 @@ Append to the existing `SkillProseTests` class in `tests/test_prep_skill_prose.p
 
     def test_prep_references_premise_composer(self):
         self.assertIn("premise.py", CMDS)
+
+    def test_premise_script_documented(self):
+        # discoverability: the composer appears in the script reference doc
+        self.assertIn("premise.py", SCRIPTS)
 
     def test_both_flows_reference_tone_catalog(self):
         # prep AND /dm:dnd new recite tone from the shared file, not inline lists
@@ -511,12 +541,19 @@ and the imported party sheets.
 Add a new numbered step between step 0 (resolve dir) and step 1 (World layer):
 
 ```
-0.5 **Premise roll (only if premise is blank).** Do NOT free-associate a premise — that
-   is what collapses every campaign into the same trope. Instead run:
-   `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/premise.py --tone <tone>`
-   Reconcile the printed scaffold into ONE coherent premise in the chosen tone, discarding
-   any rolled axis that fights the others. Log the rolled axes in `world.md` (mirror the
-   Tone Wizard's `dice.py` blank-field logging). If the host supplied a premise, skip this.
+0.5 **Resolve tone + premise (do this BEFORE authoring any bible content).** Tone drives
+   the entire bible — world, spine encounters, arc — so it must be locked first, then
+   carried through every step. Do NOT free-associate the tone OR the premise; free
+   association is exactly what collapses every campaign into the same trope. Instead:
+   - Run `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/premise.py [--tone <tone>]`.
+     Pass `--tone` if the host supplied one; omit it to roll a tone from the catalog.
+   - The scaffold reports the resolved tone. Write it to `world.md → ## Campaign Tone &
+     Genre` — it is now THE campaign tone; steps 1–6 all author in it.
+   - Reconcile the printed scaffold into ONE coherent premise in that tone, discarding any
+     rolled axis that fights the others. Log the resolved tone + rolled axes in `world.md`
+     (mirror the Tone Wizard's `dice.py` blank-field logging).
+   - If the host supplied a premise verbatim, still run the script for tone resolution but
+     use the supplied premise instead of the rolled axes.
 ```
 
 - [ ] **Step 4: Edit the `/dm:dnd new` tone line to point at the catalog**
@@ -532,15 +569,41 @@ to:
      mythic / grimdark / horror / intrigue / swashbuckling / cosmic (descriptor per entry)
 ```
 
-- [ ] **Step 5: Run the prose pins to verify pass**
+- [ ] **Step 5: Document `premise.py` in `SKILL-scripts.md`**
+
+Add an entry alongside the other prep scripts (match the existing `bestiary.py` /
+`milestone.py` format):
+
+```
+### premise.py — combinatorial premise scaffold (prep)
+`python3 ${CLAUDE_SKILL_DIR}/scripts/prep/premise.py [--tone <id>] [--seed N]`
+Rolls one entry from each of four orthogonal axes (setting × conflict × antagonist ×
+twist) from `data/premise-seeds.yaml`, colored by a tone from `data/tones.yaml` (omit
+`--tone` to roll one). Prints a labeled scaffold for the DM to reconcile into a coherent
+premise. Used by `/dm:dnd prep` step 0.5 when premise is blank; also runnable standalone
+to re-roll. `--seed` makes the roll reproducible.
+```
+
+- [ ] **Step 6: Update the `world.md` template tone placeholder**
+
+In `skills/dnd/templates/world.md:5`, change:
+```
+- **Tone:** <grimdark / dark fantasy / heroic / horror / political / swashbuckling / cosmic>
+```
+to:
+```
+- **Tone:** <one tone id from data/tones.yaml — heroic / mythic / grimdark / horror / intrigue / swashbuckling / cosmic>
+```
+
+- [ ] **Step 7: Run the prose pins to verify pass**
 
 Run: `python3 -m unittest tests.test_prep_skill_prose.SkillProseTests -v`
-Expected: PASS (existing + 3 new).
+Expected: PASS (existing + 4 new).
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add skills/dnd/SKILL-commands.md tests/test_prep_skill_prose.py
+git add skills/dnd/SKILL-commands.md skills/dnd/SKILL-scripts.md skills/dnd/templates/world.md tests/test_prep_skill_prose.py
 git commit -m "feat(prep): wire prep + new tone to shared catalog, roll premise when blank"
 ```
 
@@ -630,3 +693,17 @@ Drive `/dm:dnd prep` with a blank premise across 3–4 different tones. Confirm 
 **Type consistency:** `roll_premise(tone_id, tones, seeds, rng)` signature identical across Task 3 impl, test, and interface block. `format_scaffold(rolled)` consistent. Axis tuple `("setting","conflict","antagonist","twist")` identical in premise.py, both data tests, and the seed file keys. Instruction string `"Reconcile into ONE coherent premise"` / `"Do not default to the nearest cliché"` matches between impl and test.
 
 No gaps found.
+
+## Grill resolutions (2026-07-15)
+
+- **Blank tone:** `--tone` optional; omitted → `premise.py` rolls a tone from the catalog
+  so prep always has a concrete tone to author the whole bible in. Tone is resolved at
+  step 0.5, written to `world.md → ## Campaign Tone & Genre`, and carried through steps 1–6.
+- **Tone-agnostic axes:** kept — one axis pool serves all 7 tones; orthogonality breaks
+  the basin, tone colors at reconcile.
+- **Anti-trope line:** composer instruction explicitly names the frontier/sealed-mine/
+  missing-people default it exists to break.
+- **Discoverability:** `premise.py` documented in `SKILL-scripts.md` (pinned).
+- **Third tone copy:** `templates/world.md:5` placeholder repointed at the catalog.
+- **No-free-associate rule** extended to cover tone as well as premise.
+- **Parked:** difficulty→band-math wiring stays out of scope.
