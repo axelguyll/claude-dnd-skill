@@ -14,7 +14,7 @@ read-order). Domain glossary: `CONTEXT.md` (repo root). Review summary:
 ## 1. What this thing is
 
 A **prose-instruction-driven DM**. The "program" is three markdown documents under
-`skills/dnd/` that a model executes at the table; ~35 Python scripts are deterministic
+`skills/dnd/` that a model executes at the table; ~40 Python scripts are deterministic
 helpers (dice, HP, initiative, data lookup, rendering, prep bible generation). The prose
 is the primary artifact — reviewing DM behavior means reviewing prose.
 

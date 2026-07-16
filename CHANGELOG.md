@@ -8,8 +8,16 @@ Versions before **1.6.0** are reconstructed retroactively from git history; the 
 
 ---
 
-## [Unreleased] — 2026-07-15 — Terminal-only: display companion removed
+## [2.4.0] — 2026-07-16 — Combat grid + map cue; supporting-cast NPC tier
 
+- **Combat grid for mapped scenes.** Per-map grid spec (`maps/<handle>.grid.json`,
+  authored at prep, host-confirmed dims at first use), `grid.py` math engine
+  (movement/range/AoE, 5-ft diagonals), positions in STATE_JSON.
+- **Map cue + projector page.** The `🗺 **Map:**` cue mirrors the sound cue;
+  player-facing projector page `map.html` via `render_map.py` (tokens, hidden
+  combatants excluded, idle screen between fights). Tracker shows positions.
+- **Supporting-cast NPC tier.** 6–8 index-only NPCs seeded at `new` and `prep`,
+  promoted to full entries before first substantive dialogue.
 - **Removed the display companion entirely.** The Flask/SSE web app, phone
   companion, on-screen dice drawer, autorun/taxi mode, SFX/audio, and TTS are
   gone (~14,200 lines under `skills/dnd/display/`), along with the optional
@@ -21,17 +29,6 @@ Versions before **1.6.0** are reconstructed retroactively from git history; the 
   narration-vs-NPC block separation is preserved as a prose writing
   convention, and tutor mode continues as a chat blockquote. For solo/
   small-table play driven entirely from the terminal.
-
-## [2.4.0] — 2026-07-16 — Combat grid + map cue; supporting-cast NPC tier
-
-- Combat grid for mapped scenes: per-map grid spec (`maps/<handle>.grid.json`,
-  authored at prep, host-confirmed dims at first use), `grid.py` math engine
-  (movement/range/AoE, 5-ft diagonals), positions in STATE_JSON.
-- Map cue block (`🗺 **Map:**`) mirroring the sound cue; player-facing projector
-  page `map.html` via `render_map.py` (tokens, hidden combatants excluded,
-  idle screen between fights). Tracker shows positions.
-- Supporting-cast NPC tier: 6–8 index-only NPCs seeded at `new` and `prep`,
-  promoted to full entries before first substantive dialogue.
 
 ## [2.3.0] — 2026-06-27 — Zero-LLM continuity tools: deterministic recap, solo oracles, scene bangs, one-shot graph apply
 
