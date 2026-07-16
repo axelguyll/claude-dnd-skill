@@ -91,6 +91,41 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/combat.py attack --atk 4 --ac 15 --dmg 2d6+2
 
 ---
 
+## Grid Script — `scripts/grid.py`
+
+Combat-grid math for mapped tactical scenes. Stateless: the grid spec lives at
+`<campaign>/maps/<handle>.grid.json`, positions live in the combat STATE_JSON
+(optional `"pos": "C4"` per combatant), and every call passes both in. Tiles are
+5 ft; diagonals cost 5 ft (2014 PHB); distance is Chebyshev. Run it for ALL
+position math in mapped combat — movement legality, reach/range, AoE tiles —
+never eyeball those.
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/scripts/grid.py validate <spec.json>
+# VALID, or INVALID + one error per line (exit 1). Hard gate — never play on INVALID.
+
+python3 ${CLAUDE_SKILL_DIR}/scripts/grid.py dist C4 F7
+# 15ft
+
+python3 ${CLAUDE_SKILL_DIR}/scripts/grid.py move --from C4 --to F6 --speed 30 --spec <spec.json>
+# OK cost=25ft
+# ILLEGAL cost=40ft -- furthest reachable toward F6: E5 (30ft)
+# UNREACHABLE F6
+
+python3 ${CLAUDE_SKILL_DIR}/scripts/grid.py range --from C4 --to F7 --ft 60
+# IN RANGE (dist=15ft) / OUT OF RANGE (dist=70ft)
+
+python3 ${CLAUDE_SKILL_DIR}/scripts/grid.py aoe --shape cone --origin D4 --size 20 --dir NE --spec <spec.json>
+# 9 tiles: E3 E4 F2 F3 F4 ...
+```
+
+Shapes: `sphere` (radius, origin included) and `cube` (cardinal `--dir` only) are
+exact on this metric; `cone`/`line` are grid approximations. Line-of-sight and
+cover are NOT scripted — `blocks_los` terrain markers are in the spec for your
+reasoning; adjudicate cover in prose.
+
+---
+
 ## Character Script — `scripts/character.py`
 ```bash
 # Full stat block from raw scores
@@ -362,6 +397,19 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/render_tracker.py \
 ```
 
 Out of combat, do not call it — leave the last tracker in place.
+
+## Battle-Map Render — `scripts/render_map.py`
+
+Player-facing projector page `<campaign>/map.html` (meta-refresh, like the
+tracker). Draws `maps/<handle>.png` (or .jpg/.jpeg/.webp) stretched to the grid,
+the A1 coordinate overlay, and a token per combatant at its `"pos"` — combatants
+with `"hidden": true` are never drawn. Run it in step d2 of every mapped combat
+turn with the SAME STATE_JSON as render_tracker.py, and once at combat start.
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/scripts/render_map.py --campaign <name> --handle <handle> --state '<STATE_JSON>' --round <n>
+python3 ${CLAUDE_SKILL_DIR}/scripts/render_map.py --campaign <name> --clear   # idle screen between fights
+```
 
 ## Asset-Hub Render — `scripts/render_assets.py`
 

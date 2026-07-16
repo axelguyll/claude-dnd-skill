@@ -78,5 +78,21 @@ class MapTemplateTests(unittest.TestCase):
         self.assertIn("grid.json", MAP_TEMPLATE)
 
 
+class ScriptsDocTests(unittest.TestCase):
+    def test_grid_section_exists(self):
+        self.assertIn("## Grid Script — `scripts/grid.py`", SCRIPTS_DOC)
+
+    def test_grid_section_covers_all_subcommands(self):
+        for cmd in ("validate", "dist", "move", "range", "aoe"):
+            self.assertIn(f"grid.py {cmd}", SCRIPTS_DOC)
+
+    def test_render_map_section_exists(self):
+        self.assertIn("## Battle-Map Render — `scripts/render_map.py`",
+                      SCRIPTS_DOC)
+
+    def test_render_map_clear_documented(self):
+        self.assertIn("--clear", SCRIPTS_DOC)
+
+
 if __name__ == "__main__":
     unittest.main()
