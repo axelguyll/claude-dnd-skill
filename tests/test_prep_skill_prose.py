@@ -95,6 +95,13 @@ class DMVoiceTests(unittest.TestCase):
     def test_c_tone_follows_scene_not_theme(self):
         self.assertIn("Tone follows the scene, not the theme", SKILL)
 
+    def test_c_tone_saturation_rule_is_tone_agnostic(self):
+        # the rule must name more than one register, not just grim/ominous
+        idx = SKILL.find("Tone follows the scene, not the theme")
+        window = SKILL[idx: idx + 700]
+        self.assertIn("swashbuckling", window)
+        self.assertIn("the beats that carry the story", window)
+
     def test_b_length_follows_scene_heat(self):
         self.assertIn("Length follows the scene's heat", SKILL)
 
