@@ -92,18 +92,23 @@ def expand_tiles(expr: str) -> list[tuple[int, int]]:
 
 
 def validate_spec(spec: dict) -> list[str]:
+    if not isinstance(spec, dict):
+        return ["spec must be a JSON object"]
     errors = []
     if not spec.get("handle"):
         errors.append("handle is required")
     cols, rows = spec.get("cols"), spec.get("rows")
-    if not isinstance(cols, int) or not 1 <= cols <= MAX_COLS:
+    if isinstance(cols, bool) or not isinstance(cols, int) or not 1 <= cols <= MAX_COLS:
         errors.append(f"cols must be an int 1-{MAX_COLS}")
-    if not isinstance(rows, int) or not 1 <= rows <= MAX_ROWS:
+    if isinstance(rows, bool) or not isinstance(rows, int) or not 1 <= rows <= MAX_ROWS:
         errors.append(f"rows must be an int 1-{MAX_ROWS}")
     for i, t in enumerate(spec.get("terrain", [])):
+        if not isinstance(t, dict) or "tiles" not in t:
+            errors.append(f"terrain[{i}]: missing 'tiles'")
+            continue
         try:
             tiles = expand_tiles(t["tiles"])
-        except (KeyError, TypeError, ValueError) as e:
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
             errors.append(f"terrain[{i}]: {e}")
             continue
         if isinstance(cols, int) and isinstance(rows, int):

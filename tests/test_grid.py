@@ -93,6 +93,24 @@ class ValidateTests(unittest.TestCase):
         errs = grid.validate_spec({"cols": 8, "rows": 6})
         self.assertTrue(any("handle" in e for e in errs))
 
+    def test_non_string_tiles_reported_not_crash(self):
+        bad = dict(SPEC, terrain=[{"tiles": 123}])
+        errs = grid.validate_spec(bad)
+        self.assertTrue(any("terrain[0]" in e for e in errs))
+
+    def test_non_dict_spec_reported_not_crash(self):
+        errs = grid.validate_spec([1, 2])
+        self.assertTrue(any("JSON object" in e for e in errs))
+
+    def test_bool_dims_rejected(self):
+        errs = grid.validate_spec({"handle": "x", "cols": True, "rows": 6})
+        self.assertTrue(any("cols" in e for e in errs))
+
+    def test_missing_tiles_key_descriptive(self):
+        bad = dict(SPEC, terrain=[{"kind": "rubble"}])
+        errs = grid.validate_spec(bad)
+        self.assertTrue(any("missing 'tiles'" in e for e in errs))
+
 
 class TerrainSetsTests(unittest.TestCase):
     def test_split_by_flag(self):
