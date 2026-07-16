@@ -205,7 +205,7 @@ All under `~/.claude/dnd/campaigns/<name>/` unless noted:
   Optional Stop hook (`autosave_checkpoint.py`) prompts this on a turn cadence as backstop.
 - **Compaction re-read ladder** (SKILL.md:222-234): Live State Flags + Session Flags →
   session-tail.md (freshest narrative) → Current Situation/Recent Events → Active Combat
-  + `tracker.py list` (mid-combat) → npcs-full entry → Continuity Archive → session-log;
+  + `tracker.py status` (mid-combat) → npcs-full entry → Continuity Archive → session-log;
   imported campaigns re-read `source/<id>.md`, never a compacted memory of it. One
   targeted Read per claim. Post-compaction the behavior contract itself is re-read
   (Narration principles + Dice convention; skill-dir recoverable from
@@ -274,7 +274,8 @@ history so they aren't re-derived:
 1. ~~`paths.py` "is not a CLI" contradiction~~ — fixed; `character new` now calls the
    real CLI (SKILL-commands.md:601, paths.py:199-211).
 2. ~~`tracker.py effect-start` wrong syntax~~ — fixed; SKILL.md:45 now shows
-   `tracker.py -c <camp> effect start <actor> <property> <rounds>`.
+   `tracker.py -c <camp> effect start <actor> <property> <duration>` (duration
+   `1r/10r/60m/8h/indef`; a bare number is rejected — 2026-07-16 re-probe refinement).
 3. ~~Recap snapshot timing contradiction + unwired procedure~~ — fixed; diff-at-load
    wired as load step 6.5 (SKILL-commands.md:153), snapshot only at first-ever load,
    snapshot-at-end deleted (SKILL-commands.md:936-951, SKILL-scripts.md:207-219).
@@ -306,7 +307,7 @@ history so they aren't re-derived:
 
 ## 8. Test surface
 
-`tests/` (25 files, 257 green as of the Session F fix wave): prep pipeline is heavily
+`tests/` (25 files, 263 green as of the C10 re-probe): prep pipeline is heavily
 covered (schema incl. party block + threat counts, bestiary, premise, milestone,
 mirror-check, lifecycle, CLI-subprocess, prose-content guards), plus
 graph, oracle, recap, renderers, corpus, dice `--attack`, import columns, tones catalog,
@@ -314,5 +315,7 @@ verb table, autosave checkpoint, and two **prose-guard tests** (`test_no_display
 banning the removed display stack; `test_prep_skill_prose.py` DMVoiceTests asserting
 SKILL.md content). Prose-guard tests are the only automated check on the primary artifact
 — everything else about DM behavior is testable only by probes
-(`docs/probes/2026-07-14-prep-dry-run.md` is the model: it caught a real
-`ModuleNotFoundError` in `schema.py` that unit tests masked).
+(`docs/probes/2026-07-14-prep-dry-run.md` set the model — it caught a schema.py
+`ModuleNotFoundError` unit tests masked; `docs/probes/2026-07-16-prep-reprobe.md`
+repeated the trick post-fix-wave and caught five more, incl. a fresh-prep mirror
+mismatch and a Windows-console combat crash).

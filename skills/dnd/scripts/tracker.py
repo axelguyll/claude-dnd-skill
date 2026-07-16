@@ -136,11 +136,11 @@ def cmd_effect(campaign: str, action: str, entity_name: str,
     if action == "start":
         if not spell or not duration:
             print("  error: effect start requires <entity> <spell> <duration>")
-            return
+            raise SystemExit(1)
         dur = _parse_duration(duration)
         if dur is None:
             print(f"  error: bad duration '{duration}' — use 10r / 60m / 8h / indef")
-            return
+            raise SystemExit(1)
 
         effect = {"name": spell, "concentration": is_conc, **dur}
 
@@ -163,7 +163,7 @@ def cmd_effect(campaign: str, action: str, entity_name: str,
     elif action == "end":
         if not spell:
             print("  error: effect end requires <entity> <spell>")
-            return
+            raise SystemExit(1)
         before = len(ent["effects"])
         removed = [e for e in ent["effects"] if e["name"].lower() == spell.lower()]
         ent["effects"] = [e for e in ent["effects"] if e["name"].lower() != spell.lower()]
@@ -230,6 +230,7 @@ def cmd_effect(campaign: str, action: str, entity_name: str,
 
     else:
         print(f"  error: unknown effect action '{action}' — use start / end / tick")
+        raise SystemExit(1)
 
 
 def cmd_condition(campaign: str, entity_name: str, action: str, condition: str = "") -> None:

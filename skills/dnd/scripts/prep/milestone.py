@@ -1,6 +1,10 @@
 """milestone.py — XP-free milestone leveling marker. Writes the fork's
-`⚠ LEVEL UP PENDING (Level N)` marker onto a character sheet's **XP:** line from a
-target level, with no XP threshold. The /dm:dnd level up procedure then applies it.
+`⚠ LEVEL UP PENDING (Level N)` marker onto a character sheet from a target level,
+with no XP threshold. The /dm:dnd level up procedure then applies it.
+
+Anchor: a numeric **XP:** line when the sheet has one (legacy sheets), else the
+**Level:** line — milestone-fork sheets legitimately carry no XP numbers, and the
+template ships the XP field blank (2026-07-16 re-probe finding).
 
 Do NOT confuse with the fork's unrelated display `milestone_counter`."""
 from __future__ import annotations
@@ -8,23 +12,36 @@ from __future__ import annotations
 import pathlib
 import re
 
-# Matches the XP line, capturing the numbers, dropping any prior pending marker.
+# Each pattern captures its anchor line, dropping any prior pending marker.
 _XP_LINE = re.compile(
     r"(\*\*XP:\*\*\s*\d+\s*/\s*\d+)(?:\s*⚠ LEVEL UP PENDING \(Level \d+\))?"
 )
+_LEVEL_LINE = re.compile(
+    r"(\*\*Level:\*\*\s*\d+)(?:\s*⚠ LEVEL UP PENDING \(Level \d+\))?"
+)
+
+
+def _anchor(sheet_text: str) -> re.Pattern | None:
+    if _XP_LINE.search(sheet_text):
+        return _XP_LINE
+    if _LEVEL_LINE.search(sheet_text):
+        return _LEVEL_LINE
+    return None
 
 
 def set_pending_level(sheet_text: str, target_level: int) -> str:
-    if not _XP_LINE.search(sheet_text):
-        raise ValueError("no **XP:** line found in character sheet")
+    pattern = _anchor(sheet_text)
+    if pattern is None:
+        raise ValueError("no numeric **XP:** or **Level:** line found in character sheet")
     marker = f" ⚠ LEVEL UP PENDING (Level {target_level})"
-    return _XP_LINE.sub(lambda m: m.group(1) + marker, sheet_text, count=1)
+    return pattern.sub(lambda m: m.group(1) + marker, sheet_text, count=1)
 
 
 def clear_pending(sheet_text: str) -> str:
-    """Remove a `⚠ LEVEL UP PENDING (Level N)` marker from the XP line, leaving the
-    XP numbers intact. No-op if there is no marker."""
-    return _XP_LINE.sub(lambda m: m.group(1), sheet_text, count=1)
+    """Remove a `⚠ LEVEL UP PENDING (Level N)` marker from whichever anchor line
+    carries it, leaving the line itself intact. No-op if there is no marker."""
+    text = _XP_LINE.sub(lambda m: m.group(1), sheet_text, count=1)
+    return _LEVEL_LINE.sub(lambda m: m.group(1), text, count=1)
 
 
 def apply_to_file(path: pathlib.Path, target_level: int) -> None:

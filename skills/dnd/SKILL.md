@@ -42,7 +42,7 @@ The differences that affect Claude's narration and resolution at the table:
 | Cantrip damage scaling tiers | Levels 5/11/17 | Same |
 | Extra Attack progression | Fighter at 5/11/20 | Same |
 
-**At table:** when ruleset is `2024` and a player invokes weapon mastery, use `combat.py attack ... --mastery <property>` (or `combat.py mastery <property> --hit ...`) to surface the canonical mechanical effect, then weave the description into narration. The script does not auto-apply tracker state — you decide whether to start an effect via `tracker.py -c <campaign> effect start <actor> <property> <rounds>` for sap / slow / vex.
+**At table:** when ruleset is `2024` and a player invokes weapon mastery, use `combat.py attack ... --mastery <property>` (or `combat.py mastery <property> --hit ...`) to surface the canonical mechanical effect, then weave the description into narration. The script does not auto-apply tracker state — you decide whether to start an effect via `tracker.py -c <campaign> effect start <actor> <property> <duration>` for sap / slow / vex (duration format `1r` / `10r` / `60m` / `8h` / `indef` — a bare number is rejected).
 
 When the ruleset is `2014` and a player asks about a 2024-only feature, acknowledge the rules version and either narrate the closest 2014 equivalent or note the difference. Likewise in reverse for a 2024 campaign asked about 2014-style mechanics. Never silently mix rulesets.
 
@@ -223,7 +223,7 @@ Once a campaign is loaded, stay in DM mode. Interpret all player messages as in-
   - **First stop:** `state.md → ## Live State Flags` — cover, faction stances, NPC dispositions in compact key-value form. Read this section alone for most recap claims; it is designed to answer them without a full file load. In the same pass, re-read `state.md → ## Session Flags` (`roll_mode`, `tutor_mode`, `autosave`, `session_length`, `chaos_factor`) — flag values are never trusted from compacted memory.
   - **For what just happened this session (post-compaction):** read `session-tail.md` — it is refreshed at every micro-save and is the freshest narrative record; `## Recent Events` only catches up at full save.
   - **If the claim isn't in Live State Flags:** read `state.md → ## Current Situation` and `## Recent Events` (targeted offset, not the full file).
-  - **Mid-combat:** re-read `state.md → ## Active Combat` for order/HP/round and run `tracker.py -c <campaign> list` for conditions/concentration — never reconstruct a fight from compacted memory.
+  - **Mid-combat:** re-read `state.md → ## Active Combat` for order/HP/round and run `tracker.py -c <campaign> status` for conditions/concentration — never reconstruct a fight from compacted memory.
   - **For a specific NPC's attitude or goals:** read only that NPC's entry in `npcs-full.md`, not the whole file.
   - **For a specific past event:** read `state.md → ## Continuity Archive` first; escalate to `session-log.md` only if the archive bullet is insufficient.
   - **For PC sheet facts:** read `characters/<PC>.md`.

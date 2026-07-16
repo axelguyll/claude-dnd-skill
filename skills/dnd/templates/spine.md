@@ -47,7 +47,7 @@ Each beat is validated independently and as part of the sequence:
 | `gear` | list of str | may be empty; any entry present must be a non-empty string |
 | `threats` | list of str | monster names, optionally count-prefixed (`"3x Goblin"` — bare names mean 1); the name part must resolve via `bestiary.find_monster` and its CR must be in-band for the party's level *during* that beat (see below). State counts and shape each fight deliberately — one at-ceiling solo, a banded pair, or a mob of low-CR minions: the schema bands the *species*; you band the *action economy*, scaled to `party.size` |
 | `secret` | str or null | key must always be present, even when there is nothing hidden at this beat |
-| `status` | str | `pending` at authoring time; the running procedure advances this as beats resolve |
+| `status` | str | beat 1 is `current` and the rest `pending` at authoring time — the spine carries the playhead, and the state.md mirror is derived from it; `/dm:dnd beat complete` advances it as beats resolve |
 
 ### Hooks (rule of three)
 
@@ -100,7 +100,7 @@ level the party is at during that beat.
       "gear": ["torch"],
       "threats": ["3x Goblin"],
       "secret": null,
-      "status": "pending"
+      "status": "current"
     },
     {
       "id": 2,

@@ -28,6 +28,18 @@ import sys
 import re
 
 
+def _force_utf8_stdio() -> None:
+    # Windows consoles default to cp1252, which cannot encode the tracker's
+    # active-row marker (►) and crashes mid-combat (2026-07-16 re-probe
+    # finding). Same guard premise.py uses.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+
+
+_force_utf8_stdio()
+
+
 def roll(n, sides):
     return [random.randint(1, sides) for _ in range(n)]
 

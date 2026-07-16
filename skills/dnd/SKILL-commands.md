@@ -349,7 +349,9 @@ and the imported party sheets.
    actual party's classes), `threats` (exact MM names with counts — `"3x Goblin"`; shape
    each fight deliberately for `party.size`: one at-ceiling solo, a banded pair, or a mob
    of low-CR minions — the schema bands the species, you band the action economy),
-   `secret` (prose or null), `status: pending`.
+   `secret` (prose or null), `status` — **beat 1 `current`, the rest `pending`** (the
+   spine carries the playhead from prep onward; the state.md mirror at step 6 must match
+   it or the `beat complete` mirror check trips on a fresh campaign).
    **Difficulty** (from the command arg, default `standard`) shifts the authoring, not
    the band: `easy` → pick from the lower half of each band, solos below ceiling;
    `standard` → mixed picks across the band; `deadly` → ceiling picks and paired
