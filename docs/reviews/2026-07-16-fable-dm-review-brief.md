@@ -185,6 +185,16 @@ Starting seeds:
   each finding with `file:line`, severity, concrete fix (before/after prose diff for prose
   issues), plus an **"if you do three things"** priority list at the top.
 - Finalize the compass (fragile-links register + open questions).
+- **Batch fix-wave (owner pre-approved 2026-07-16, after Session B):** apply ALL accumulated
+  prose/template contradiction fixes in ONE wave here — the Session A prose↔script drift
+  items (ARCHITECTURE.md §7.1-7.5), the Session B contradictions (CONTEXT.md "⚠ Drift"
+  flags + compass [B] entries: `[theme]`→`[tone]` arg, "Faction states"→"Faction activity"
+  rename, XP mentions at SKILL.md:183-184/301, premise/theme wording, deeds format), and
+  any C-E prose fixes the owner approves from the summary. Present the consolidated diff
+  list first, apply on the owner's go, run the test suite. Then **refresh every stale
+  `file:line` citation** in ARCHITECTURE.md, CONTEXT.md, and the compass — the fixes shift
+  line numbers, and those cites are the anti-drift anchors. This ordering (fix-wave last,
+  single citation refresh) was chosen deliberately: do not apply prose fixes in C-E.
 - Tick the ledger complete.
 
 ---
