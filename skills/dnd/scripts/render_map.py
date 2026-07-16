@@ -123,6 +123,9 @@ def main(argv=None):
     p.add_argument("--clear", action="store_true")
     args = p.parse_args(argv)
 
+    if not args.clear and (not args.handle or not args.state):
+        p.error("--handle and --state are required unless --clear")
+
     camp = find_campaign(args.campaign)
     camp.mkdir(parents=True, exist_ok=True)
     out = camp / "map.html"
@@ -132,8 +135,6 @@ def main(argv=None):
         print(str(out))
         return
 
-    if not args.handle or not args.state:
-        p.error("--handle and --state are required unless --clear")
     spec_path = camp / "maps" / f"{args.handle}.grid.json"
     if not spec_path.exists():
         sys.exit(f"No grid spec at {spec_path} — author it first "

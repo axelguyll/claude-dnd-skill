@@ -62,6 +62,12 @@ class RenderMapTests(unittest.TestCase):
         self.assertNotIn("<image", out)
         self.assertIn(">A<", out)             # grid still there
 
+    def test_hidden_unplaced_stays_out_of_strip(self):
+        combatants = COMBATANTS + [
+            {"name": "Shade", "type": "npc", "hp": 9, "ac": 12, "hidden": True}]
+        out = render_map.render_map_html(SPEC, combatants, 1, None)
+        self.assertNotIn("Shade", out)
+
 
 class IdleTests(unittest.TestCase):
     def test_idle_screen(self):
