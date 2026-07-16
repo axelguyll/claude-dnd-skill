@@ -30,6 +30,15 @@ class PremiseSeedTests(unittest.TestCase):
         for axis in AXES:
             self.assertIsInstance(self.doc["axes"][axis], list)
 
+    def test_every_catalog_tone_has_exemplars(self):
+        # Cross-file guard: derive coverage from tones.yaml itself, so adding a tone
+        # there without seeding exemplars here fails loudly instead of silently
+        # degrading to an empty exemplar list at roll time.
+        tones = yaml.safe_load((DATA / "tones.yaml").read_text(encoding="utf-8"))["tones"]
+        for t in tones:
+            self.assertIn(t["id"], self.doc["exemplars"], f"{t['id']} has no exemplars")
+            self.assertGreaterEqual(len(self.doc["exemplars"][t["id"]]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

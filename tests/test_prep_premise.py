@@ -53,9 +53,12 @@ class RollTests(unittest.TestCase):
         self.assertIn("Reconcile into ONE coherent premise", out)
         self.assertIn("Do not default to the nearest cliché", out)
 
-    def test_scaffold_names_the_target_trope(self):
+    def test_instruction_names_target_trope(self):
+        # The anti-trope line is static (part of _INSTRUCTION), so it must appear in
+        # every scaffold regardless of roll — pin it directly, not via a lucky seed.
         r = premise.roll_premise("grimdark", self.tones, self.seeds, random.Random(2))
         self.assertIn("sealed-mine", premise.format_scaffold(r))
+        self.assertIn("sealed-mine", premise._INSTRUCTION)
 
 
 class CliTests(unittest.TestCase):

@@ -295,7 +295,8 @@ and the imported party sheets.
      Genre` — it is now THE campaign tone; steps 1–6 all author in it.
    - Reconcile the printed scaffold into ONE coherent premise in that tone, discarding any
      rolled axis that fights the others. Log the resolved tone + rolled axes in `world.md`
-     (mirror the Tone Wizard's `dice.py` blank-field logging).
+     (log it the way the Tone Wizard logs a randomized blank field — the `d6=N → result`
+     format; premise.py does its own rolling, so you are mirroring the log format, not calling dice.py).
    - If the host supplied a premise verbatim, still run the script for tone resolution but
      use the supplied premise instead of the rolled axes.
 1. **World layer.** Fill `templates/world.md` (Factions with Goals/Methods/Resources/

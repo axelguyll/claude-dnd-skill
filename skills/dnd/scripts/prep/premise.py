@@ -84,6 +84,13 @@ if __name__ == "__main__":
     import argparse
     import sys
 
+    # Force UTF-8 output: the scaffold and seed content use em-dashes/× and the
+    # Windows console default (cp1252) would emit them as bytes a UTF-8 reader
+    # (the DM tool loop) sees as replacement chars.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+
     ap = argparse.ArgumentParser(description="Roll a combinatorial premise scaffold for prep.")
     ap.add_argument("--tone", default=None, help="tone id from data/tones.yaml (omit to roll one)")
     ap.add_argument("--seed", type=int, default=None, help="seed the roll (for reproducibility/tests)")
@@ -96,6 +103,7 @@ if __name__ == "__main__":
         rolled = roll_premise(args.tone, tones, seeds, rng)
     except KeyError as e:
         valid = ", ".join(t["id"] for t in tones)
-        print(f"error: {e}. valid tones: {valid}", file=sys.stderr)
+        # e.args[0] avoids KeyError.__str__ re-quoting the message.
+        print(f"error: {e.args[0]}. valid tones: {valid}", file=sys.stderr)
         raise SystemExit(1)
     print(format_scaffold(rolled))
