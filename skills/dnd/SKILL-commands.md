@@ -24,7 +24,8 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 4. Copy and populate templates from `${CLAUDE_SKILL_DIR}/templates/` — state.md, world.md, npcs.md, session-log.md. The state.md header keeps the `**Ruleset:**` field set in step 2.
 5. Ask: **party size** and **starting level**
 6. **Tone/Genre Wizard** — present all four in one message:
-   - Tone: `grimdark / dark fantasy / heroic / horror / political / swashbuckling / cosmic`
+   - Tone: present the ids from the shared Tone Catalog (`data/tones.yaml`) — heroic /
+     mythic / grimdark / horror / intrigue / swashbuckling / cosmic (descriptor per entry)
    - Magic level: `none / low / medium / high`
    - Setting type: `medieval / renaissance / ancient / nautical / underground`
    - Danger level: `lethal / gritty / standard / heroic`
@@ -273,16 +274,30 @@ Campaign "<name>" created from <source title>.
 
 ---
 
-## `/dm:dnd prep [premise:"..."] [tone:grim|classic|lighthearted] [difficulty:easy|standard|deadly]`
+## `/dm:dnd prep [premise:"..."] [tone:heroic|mythic|grimdark|horror|intrigue|swashbuckling|cosmic] [difficulty:easy|standard|deadly]`
 
 Generate the authored campaign **bible** before session one. Inputs: premise (optional —
-blank = surprise-me), tone, difficulty, and the imported party sheets.
+blank = surprise-me), tone (from the shared Tone Catalog, `data/tones.yaml`), difficulty,
+and the imported party sheets.
 
 0. **Resolve campaign + dir.** If `<name>` was not supplied, ask for it. Create the
    campaign dir: `mkdir -p ~/.claude/dnd/campaigns/<name>/characters`. Ruleset defaults
    to **2014**; if the host passed `ruleset:2024`, use 2024 (and, as in `/dm:dnd new`
    step 2, verify/build the 2024 dataset). Do not interrupt with a ruleset question —
    prep is a seal-and-walk-away flow.
+0.5 **Resolve tone + premise (do this BEFORE authoring any bible content).** Tone drives
+   the entire bible — world, spine encounters, arc — so it must be locked first, then
+   carried through every step. Do NOT free-associate the tone OR the premise; free
+   association is exactly what collapses every campaign into the same trope. Instead:
+   - Run `python3 ${CLAUDE_SKILL_DIR}/scripts/prep/premise.py [--tone <tone>]`.
+     Pass `--tone` if the host supplied one; omit it to roll a tone from the catalog.
+   - The scaffold reports the resolved tone. Write it to `world.md → ## Campaign Tone &
+     Genre` — it is now THE campaign tone; steps 1–6 all author in it.
+   - Reconcile the printed scaffold into ONE coherent premise in that tone, discarding any
+     rolled axis that fights the others. Log the resolved tone + rolled axes in `world.md`
+     (mirror the Tone Wizard's `dice.py` blank-field logging).
+   - If the host supplied a premise verbatim, still run the script for tone resolution but
+     use the supplied premise instead of the rolled axes.
 1. **World layer.** Fill `templates/world.md` (Factions with Goals/Methods/Resources/
    Opposition/Secret/Current-activity/Attitude; Adventure Nodes as *situations, not plots*;
    Three Truths per element). Write to the campaign's `world.md`.

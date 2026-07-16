@@ -372,3 +372,12 @@ regen never interrupts a playing ambient loop.
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/scripts/render_assets.py --campaign <name>
 ```
+
+## Premise Script — `scripts/prep/premise.py`
+
+`python3 ${CLAUDE_SKILL_DIR}/scripts/prep/premise.py [--tone <id>] [--seed N]`
+Rolls one entry from each of four orthogonal axes (setting × conflict × antagonist ×
+twist) from `data/premise-seeds.yaml`, colored by a tone from `data/tones.yaml` (omit
+`--tone` to roll one). Prints a labeled scaffold for the DM to reconcile into a coherent
+premise. Used by `/dm:dnd prep` step 0.5 when premise is blank; also runnable standalone
+to re-roll. `--seed` makes the roll reproducible.
