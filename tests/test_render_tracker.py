@@ -67,5 +67,22 @@ class RenderTrackerTests(unittest.TestCase):
         self.assertIn("✘2", out)
 
 
+class PositionColumnTests(unittest.TestCase):
+    def setUp(self):
+        self.eff = render_tracker.condition_effects(SRD)
+
+    def test_pos_shown_when_present(self):
+        combatants = [{"name": "Piper", "hp": 18, "max_hp": 24, "ac": 15,
+                       "initiative": 14, "conditions": [], "pos": "C4"}]
+        out = render_tracker.render_tracker_html(combatants, 1, {}, self.eff)
+        self.assertIn("@ C4", out)
+
+    def test_no_pos_no_marker(self):
+        combatants = [{"name": "Piper", "hp": 18, "max_hp": 24, "ac": 15,
+                       "initiative": 14, "conditions": []}]
+        out = render_tracker.render_tracker_html(combatants, 1, {}, self.eff)
+        self.assertNotIn("@ ", out)
+
+
 if __name__ == "__main__":
     unittest.main()

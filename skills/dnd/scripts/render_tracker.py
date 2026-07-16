@@ -59,6 +59,8 @@ def render_tracker_html(combatants: list, round_num: int,
     rows = []
     for i, c in enumerate(combatants):
         name = html.escape(str(c["name"]))
+        pos = (f' <span class="pos">@ {html.escape(str(c["pos"]))}</span>'
+               if c.get("pos") else "")
         hp = c.get("hp", 0)
         max_hp = c.get("max_hp", hp) or 1
         pct = max(0, min(100, round(100 * hp / max_hp)))
@@ -89,7 +91,7 @@ def render_tracker_html(combatants: list, round_num: int,
         rows.append(
             f'<div class="row{active}">'
             f'<div class="init">{init}</div>'
-            f'<div class="main"><div class="name">{name}</div>'
+            f'<div class="main"><div class="name">{name}{pos}</div>'
             f'<div class="conds">{cond_html}</div>{conc}{ds_html}</div>'
             f'<div class="hpbox"><div class="hpbar"><span style="width:{pct}%"></span></div>'
             f'<div class="hptext">{hp}/{max_hp} HP · AC {ac}</div></div>'
@@ -110,7 +112,7 @@ def render_tracker_html(combatants: list, round_num: int,
  .main{{flex:1}} .name{{font-weight:600;font-size:16px}} .conds{{margin-top:3px}}
  .cond{{display:inline-block;background:#3a2c1c;color:#f0c987;border-radius:4px;padding:1px 7px;margin:2px 4px 0 0;font-size:12px}}
  .cond em{{display:block;font-style:normal;color:#b7a488;font-size:11px}}
- .none{{color:#6b6155}} .conc{{color:#8fb7d6;font-size:12px;margin-top:3px}}
+ .none{{color:#6b6155}} .pos{{color:#8fb7d6;font-size:12px;font-weight:400}} .conc{{color:#8fb7d6;font-size:12px;margin-top:3px}}
  .ds{{color:#d68f8f;font-size:12px;margin-top:3px}}
  .hpbox{{width:150px}} .hpbar{{height:8px;background:#2c2620;border-radius:4px;overflow:hidden}}
  .hpbar span{{display:block;height:100%;background:#7fae5f}}
