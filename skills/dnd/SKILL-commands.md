@@ -386,6 +386,15 @@ and the imported party sheets.
      ("large cavern map"), never a creature or plot label.
    - `ambient-list.md` from `templates/ambient-list.md` — one loop per distinct notable
      location (town square, crypt, cave). Describe the atmosphere only.
+   For every map-list entry, also author its **grid spec** to
+   `~/.claude/dnd/campaigns/<name>/maps/<handle>.grid.json` — dims (`cols` ≤ 26 →
+   letters, `rows` → numbers; tiles are 5 ft; non-square fine) plus terrain regions
+   (`tiles` as `F1` or `C3-D5`; flags `difficult` / `impassable` / `blocks_los`; free-prose
+   `notes`). Same spoiler discipline as the lists: **terrain only**, never why the party
+   goes there or what happens. Then hard-gate each spec:
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/grid.py validate <spec.json>`
+   If it prints `INVALID`, fix every listed error and re-run — never proceed on an
+   invalid spec (same rule as the spine gate at step 3).
    Then build the host's asset hub:
    `python3 ${CLAUDE_SKILL_DIR}/scripts/render_assets.py --campaign <name>`
    These lists ship in the artifacts the host reads. Keep every hint acquirable and every
@@ -758,15 +767,34 @@ Run `scripts/dice.py <notation>`. Display output verbatim. Examples: `d20`, `2d6
 
 ## `/dm:dnd combat start`
 1. Identify combatants; collect name, DEX mod, HP, AC, type (pc/npc) for each.
+1.5 **Mapped combat?** If the scene sits at a location matching a `map-list.md` handle
+   (or the host names a listed map to use), this fight is on the grid:
+   - Emit the map cue on its own line: `🗺 **Map:** *<handle>*`.
+   - Load `maps/<handle>.grid.json`. **First use of this handle** (spec lacks
+     `"confirmed": true`): ask the host one line — *"spec says <cols>×<rows> — match
+     your map? give real dims if not."* On override, rewrite `cols`/`rows` (re-fit
+     terrain regions proportionally if the shape changed a lot), then add
+     `"confirmed": true` and re-run `grid.py validate`. **No spec file at all** (older
+     prep): author one now through the same exchange — dims from the host, terrain from
+     the scene as narrated so far — validate, save, continue.
+   - Place everyone: NPCs per the fiction; players state their tiles (default them to a
+     sensible entry edge if they don't care). Add `"pos": "<tile>"` to each combatant's
+     JSON. An unrevealed enemy either stays out of the JSON until it appears or carries
+     `"hidden": true` — hidden combatants never render on the player page.
+   A fight anywhere else is theater of the mind: no cue, no grid, no `pos` fields —
+   skip this step entirely.
 2. Run `combat.py init '<JSON>'` — auto-roll initiative for every combatant including PCs. Show the tracker and per-combatant roll breakdown in chat:
    ```
    ⚔️ Initiative — Round 1
    [Name]: d20(N) + DEX = total
    Turn order: [Name] → [Name] → ...
    ```
-3. Save STATE_JSON to `state.md` under `## Active Combat`.
+3. Save STATE_JSON to `state.md` under `## Active Combat`. Mapped combat: also run the
+   first projector render —
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/render_map.py --campaign <name> --handle <handle> --state '<STATE_JSON>' --round 1`
 4. Step through turns using the per-turn sequence (in SKILL.md Active DM Mode).
-5. On combat end: update HP in character sheets, clear `## Active Combat`, narrate aftermath, run `tracker.py -c <campaign> clear`, and re-run `render_tracker.py` once with the final state and a "combat ended" marker (or clear tracker.html) — the meta-refresh dashboard otherwise keeps showing a live fight that's over.
+5. On combat end: update HP in character sheets, clear `## Active Combat`, narrate aftermath, run `tracker.py -c <campaign> clear`, and re-run `render_tracker.py` once with the final state and a "combat ended" marker (or clear tracker.html) — the meta-refresh dashboard otherwise keeps showing a live fight that's over. Mapped combat: also emit the down-cue on its own line — `🗺 **Map:** *down — theater of the mind*` — and clear the projector page:
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/render_map.py --campaign <name> --clear`
 
 **No XP.** This is a milestone-leveling fork — combat end awards no XP. Leveling happens only at
 `/dm:dnd beat complete`. Narrate loot/consequences in the aftermath send; do not send an XP block.

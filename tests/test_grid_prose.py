@@ -42,5 +42,41 @@ class SkillMdTests(unittest.TestCase):
         self.assertRegex(SKILL, r"Mid-combat:.*positions")
 
 
+class CommandsMdTests(unittest.TestCase):
+    def _prep_step_4(self):
+        return re.search(r"^4\. \*\*Asset shopping lists\.\*\*.*?(?=^5\. )",
+                         COMMANDS, re.M | re.S).group(0)
+
+    def test_prep_authors_grid_specs(self):
+        step = self._prep_step_4()
+        self.assertIn("grid.json", step)
+        self.assertIn("grid.py validate", step)
+
+    def test_prep_spec_is_spoiler_free(self):
+        self.assertIn("terrain only", self._prep_step_4())
+
+    def _combat_start(self):
+        return re.search(r"^## `/dm:dnd combat start`.*?(?=^---)",
+                         COMMANDS, re.M | re.S).group(0)
+
+    def test_combat_start_emits_cue(self):
+        self.assertIn("🗺 **Map:**", self._combat_start())
+
+    def test_combat_start_first_use_confirm(self):
+        self.assertIn("confirmed", self._combat_start())
+
+    def test_combat_start_places_positions(self):
+        self.assertIn('"pos"', self._combat_start())
+
+    def test_combat_end_clears_map(self):
+        self.assertIn("--clear", self._combat_start())
+        self.assertIn("down — theater of the mind", self._combat_start())
+
+
+class MapTemplateTests(unittest.TestCase):
+    def test_template_mentions_grid_sidecar(self):
+        self.assertIn("grid.json", MAP_TEMPLATE)
+
+
 if __name__ == "__main__":
     unittest.main()
