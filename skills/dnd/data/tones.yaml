@@ -1,0 +1,25 @@
+# skills/dnd/data/tones.yaml
+# Shared tone catalog. Single source of truth for BOTH /dm:dnd prep and
+# /dm:dnd new. Edit here, never inline in SKILL-commands.md.
+tones:
+  - id: heroic
+    descriptor: "bright high fantasy, clear stakes, beatable villains"
+    mood_note: "courage pays off; let clean wins feel earned, not naive"
+  - id: mythic
+    descriptor: "classic D&D middle register — wonder and danger in balance"
+    mood_note: "the world is old and strange; treat legends as literally real"
+  - id: grimdark
+    descriptor: "harsh, morally grey, every victory costs something"
+    mood_note: "let wins bleed a little; no clean hands"
+  - id: horror
+    descriptor: "dread, survival, the wrong-shaped thing"
+    mood_note: "safety is temporary and the threat is patient — but only when it counts"
+  - id: intrigue
+    descriptor: "courts, leverage, quiet betrayal"
+    mood_note: "everyone wants something; trust is spendable currency"
+  - id: swashbuckling
+    descriptor: "fast, funny, daring"
+    mood_note: "keep it moving, let them look cool, banter over dread"
+  - id: cosmic
+    descriptor: "eldritch, unknowable, mystery at scale"
+    mood_note: "understanding is dangerous and the scale dwarfs the party"

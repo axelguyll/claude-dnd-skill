@@ -1,0 +1,60 @@
+# skills/dnd/data/premise-seeds.yaml
+# Combinatorial premise seed bank for /dm:dnd prep. Axes are TONE-AGNOSTIC:
+# tone colors a rolled combination at reconcile time, so one axis set serves
+# all 7 tones. premise.py rolls one entry per axis independently.
+axes:
+  setting:
+    - "a trade-city built across a canyon on chained bridges"
+    - "a monastery on a tidal island, cut off from the mainland at high water"
+    - "a caravan road through salt flats where the wells are failing one by one"
+    - "a river-delta port where three rivers and three laws meet"
+    - "a mountain observatory that has stopped answering its couriers"
+    - "a floating market-barge town that never docks in the same place twice"
+    - "a border fort repurposed into a refugee town after the war moved on"
+    - "an old-growth forest the maps insist is smaller than it is"
+  conflict:
+    - "a succession no living claimant can prove cleanly"
+    - "a resource everyone needs that has started running out this season"
+    - "a treaty coming due that half the signatories no longer honor"
+    - "a debt called in all at once across an entire region"
+    - "a migration arriving faster than anyone planned for"
+    - "a discovery that makes an old crime suddenly provable"
+    - "a quarantine no one can agree is still necessary"
+  antagonist:
+    - "a guild that has quietly bought every debt in the region"
+    - "a reformer whose fix is worse than the problem"
+    - "an heir raised in exile who has come home to collect"
+    - "a bureaucracy following a rule past the point of sense"
+    - "a folk hero whose legend requires a war to stay true"
+    - "a cartel of experts who profit from the problem staying unsolved"
+    - "a well-meaning zealot certain the ends justify anything"
+  twist:
+    - "the obvious victim is orchestrating the whole thing"
+    - "the thing everyone fears is the only thing holding worse at bay"
+    - "the party's employer is on the wrong side and doesn't know it"
+    - "the solution everyone wants would doom a group no one is counting"
+    - "the crisis already happened; this is the cover-up"
+    - "two factions are the same faction wearing two faces"
+    - "the map is right and the territory is lying"
+exemplars:
+  heroic:
+    - "A failing mountain observatory begs for aid; the storms it tracked were the only warning against a rival kingdom's march, and the party can restore the watch before the first banners crest."
+    - "A river-delta port drowns in a called-in debt; a folk-hero magistrate rallies the three river-guilds, and the party carries the alliance that saves the season."
+  mythic:
+    - "An old-growth forest larger than any map admits hides a sleeping arbiter; a treaty coming due wakes it, and the party must answer for both sides of a bargain older than the kingdom."
+    - "A border fort turned refugee town swells with a migration arriving faster than anyone can house it; the folk hero organizing relief needs a war to keep the legend true, and the two camps feeding the crisis turn out to be the same faction wearing two faces."
+  grimdark:
+    - "A quarantine no one will lift is the only thing keeping a cartel's profit alive; lifting it saves thousands and buries the party's employer, who is on the wrong side and doesn't know it."
+    - "A mountain observatory stops answering its couriers the same season the valley's water starts running out; the cartel of engineers profiting from the shortage staying unsolved already know the crisis happened weeks ago — this expedition is the cover-up."
+  horror:
+    - "A tidal-island monastery goes silent between high waters; the thing the monks feared is the only thing holding something worse at bay, and the tide is coming in."
+    - "A salt-flat caravan road loses its wells one by one under a quarantine the local magistrate won't lift; the bureaucracy enforcing it is following the letter of a rule past the point of sense, because the map is right and the territory itself has started lying."
+  intrigue:
+    - "A canyon trade-city faces a succession no claimant can prove; a guild that bought every debt in the city means to pick the winner, and the party holds the one ledger that decides it."
+    - "A barge-town that never docks twice is the only neutral ground left for a treaty half its signatories no longer honor; the reformer pushing a fix would doom a delta community no one at the table is counting."
+  swashbuckling:
+    - "A market-barge town that never docks twice is running from an heir come home to collect; the party has one festival's worth of chaos to swap the debt-ledgers before the barge is boarded."
+    - "A canyon city's chained bridges groan under a debt called in all at once; the exiled heir 'collecting' it plays the wronged victim beautifully — right up until the party realizes she's orchestrating the whole collapse herself, and there's a bridge-chase either way."
+  cosmic:
+    - "A salt-flat caravan road loses its wells one by one along a line no cartographer will admit is a shape; the discovery that maps it makes an old crime provable and an older presence aware of being seen."
+    - "A tidal-island monastery surfaces a discovery that makes an ancient crime against something not-quite-a-god suddenly provable; the zealot who wants it prosecuted is certain the ends justify anything, not realizing the old crime is the only thing holding something far worse at bay."

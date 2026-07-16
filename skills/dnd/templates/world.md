@@ -2,7 +2,7 @@
 **Generated:** <date>
 
 ## Campaign Tone & Genre
-- **Tone:** <grimdark / dark fantasy / heroic / horror / political / swashbuckling / cosmic>
+- **Tone:** <one tone id from data/tones.yaml — heroic / mythic / grimdark / horror / intrigue / swashbuckling / cosmic>
 - **Magic level:** <none / low / medium / high>
 - **Setting type:** <medieval / renaissance / ancient / nautical / underground>
 - **Danger level:** <lethal / gritty / standard / heroic>

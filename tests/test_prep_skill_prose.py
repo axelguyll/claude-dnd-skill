@@ -58,6 +58,30 @@ class SkillProseTests(unittest.TestCase):
         self.assertNotEqual(idx, -1)
         self.assertIn("deprecated", SCRIPTS.lower())
 
+    # --- prep premise-variance wiring (2026-07-15) ---
+
+    def test_prep_signature_uses_catalog_tones(self):
+        # anchor on the heading marker itself — a bare "/dm:dnd prep" search matches
+        # an earlier legacy-mode cross-reference (SKILL-commands.md:11) before the
+        # actual command heading.
+        idx = CMDS.find("## `/dm:dnd prep")
+        sig = CMDS[idx: idx + 200]
+        # widened away from the old 3-mood enum
+        self.assertNotIn("tone:grim|classic|lighthearted", sig)
+        self.assertIn("swashbuckling", sig)
+        self.assertIn("cosmic", sig)
+
+    def test_prep_references_premise_composer(self):
+        self.assertIn("premise.py", CMDS)
+
+    def test_premise_script_documented(self):
+        # discoverability: the composer appears in the script reference doc
+        self.assertIn("premise.py", SCRIPTS)
+
+    def test_both_flows_reference_tone_catalog(self):
+        # prep AND /dm:dnd new recite tone from the shared file, not inline lists
+        self.assertGreaterEqual(CMDS.count("data/tones.yaml"), 2)
+
 
 class DMVoiceTests(unittest.TestCase):
     """Guards for the 2026-07-15 DM voice overhaul (spec A-G). These pin prompt
@@ -70,6 +94,13 @@ class DMVoiceTests(unittest.TestCase):
 
     def test_c_tone_follows_scene_not_theme(self):
         self.assertIn("Tone follows the scene, not the theme", SKILL)
+
+    def test_c_tone_saturation_rule_is_tone_agnostic(self):
+        # the rule must name more than one register, not just grim/ominous
+        idx = SKILL.find("Tone follows the scene, not the theme")
+        window = SKILL[idx: idx + 700]
+        self.assertIn("swashbuckling", window)
+        self.assertIn("the beats that carry the story", window)
 
     def test_b_length_follows_scene_heat(self):
         self.assertIn("Length follows the scene's heat", SKILL)
