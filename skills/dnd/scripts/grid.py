@@ -206,6 +206,59 @@ def move_verdict(spec: dict, from_label: str, to_label: str, speed: int) -> str:
             f"{to_label.strip().upper()}: {tile_name(*reach)} ({spent}ft)")
 
 
+def range_verdict(from_label: str, to_label: str, ft: int) -> str:
+    d = dist_ft(from_label, to_label)
+    return (f"IN RANGE (dist={d}ft)" if d <= ft
+            else f"OUT OF RANGE (dist={d}ft)")
+
+
+def aoe_tiles(spec: dict, shape: str, origin_label: str, size_ft: int,
+              direction: str = "N") -> list[str]:
+    cols, rows = spec["cols"], spec["rows"]
+    o = parse_tile(origin_label)
+    s = max(1, size_ft // TILE_FT)
+    if direction not in DIRS:
+        raise ValueError(f"Bad direction: {direction!r}")
+    dc, dr = DIRS[direction]
+    tiles = set()
+
+    if shape == "sphere":
+        for c in range(max(0, o[0] - s), min(cols, o[0] + s + 1)):
+            for r in range(max(0, o[1] - s), min(rows, o[1] + s + 1)):
+                tiles.add((c, r))
+    elif shape == "cube":
+        if dc and dr:
+            raise ValueError("cube supports cardinal --dir only (N/E/S/W)")
+        side = s
+        off = -(side // 2)
+        for f in range(side):
+            for w in range(off, off + side):
+                if dc:                        # E/W: forward on cols, width on rows
+                    tiles.add((o[0] + dc * f, o[1] + w))
+                else:                         # N/S: forward on rows, width on cols
+                    tiles.add((o[0] + w, o[1] + dr * f))
+    elif shape == "cone":
+        ang0 = math.atan2(dr, dc)
+        for c in range(cols):
+            for r in range(rows):
+                if (c, r) == o:
+                    continue
+                if max(abs(c - o[0]), abs(r - o[1])) > s:
+                    continue
+                ang = math.atan2(r - o[1], c - o[0])
+                diff = abs((ang - ang0 + math.pi) % (2 * math.pi) - math.pi)
+                if diff <= math.pi / 4 + 1e-9:
+                    tiles.add((c, r))
+    elif shape == "line":
+        for i in range(1, s + 1):
+            tiles.add((o[0] + dc * i, o[1] + dr * i))
+    else:
+        raise ValueError(f"Bad shape: {shape!r}")
+
+    inb = [(c, r) for (c, r) in tiles if 0 <= c < cols and 0 <= r < rows]
+    return [tile_name(c, r) for (c, r) in sorted(inb, key=lambda t: (t[1], t[0]))]
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description="Combat-grid math.")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -222,6 +275,19 @@ def main(argv=None):
     m.add_argument("--to", required=True)
     m.add_argument("--speed", type=int, required=True)
     m.add_argument("--spec", required=True)
+
+    r = sub.add_parser("range")
+    r.add_argument("--from", dest="frm", required=True)
+    r.add_argument("--to", required=True)
+    r.add_argument("--ft", type=int, required=True)
+
+    a = sub.add_parser("aoe")
+    a.add_argument("--shape", required=True,
+                   choices=["sphere", "cube", "cone", "line"])
+    a.add_argument("--origin", required=True)
+    a.add_argument("--size", type=int, required=True)
+    a.add_argument("--dir", dest="direction", default="N", choices=sorted(DIRS))
+    a.add_argument("--spec", required=True)
 
     args = p.parse_args(argv)
     if args.cmd == "dist":
@@ -241,6 +307,12 @@ def main(argv=None):
         print("VALID")
     if args.cmd == "move":
         print(move_verdict(load_spec(args.spec), args.frm, args.to, args.speed))
+    if args.cmd == "range":
+        print(range_verdict(args.frm, args.to, args.ft))
+    if args.cmd == "aoe":
+        tiles = aoe_tiles(load_spec(args.spec), args.shape, args.origin,
+                          args.size, args.direction)
+        print(f"{len(tiles)} tiles: {' '.join(tiles)}")
 
 
 if __name__ == "__main__":

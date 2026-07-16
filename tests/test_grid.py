@@ -162,5 +162,55 @@ class MoveTests(unittest.TestCase):
             grid.move_verdict(SPEC, "A1", "Z9", 30)
 
 
+class RangeTests(unittest.TestCase):
+    def test_in_range(self):
+        self.assertEqual(grid.range_verdict("C4", "F5", 60), "IN RANGE (dist=15ft)")
+
+    def test_out_of_range(self):
+        self.assertEqual(grid.range_verdict("A1", "H6", 30),
+                         "OUT OF RANGE (dist=35ft)")
+
+
+class AoeTests(unittest.TestCase):
+    BIG = {"handle": "big", "cols": 12, "rows": 12, "terrain": []}
+
+    def test_sphere_20ft_is_chebyshev_radius_4(self):
+        tiles = grid.aoe_tiles(self.BIG, "sphere", "F6", 20)
+        self.assertIn("F6", tiles)            # origin included
+        self.assertIn("B2", tiles)            # 4 tiles diagonal
+        self.assertNotIn("A1", tiles)         # 5 tiles away
+        self.assertEqual(len(tiles), 81)      # 9x9 square
+
+    def test_sphere_clips_to_grid(self):
+        tiles = grid.aoe_tiles(self.BIG, "sphere", "A1", 20)
+        self.assertEqual(len(tiles), 25)      # 5x5 corner clip
+
+    def test_cube_cardinal(self):
+        tiles = grid.aoe_tiles(self.BIG, "cube", "F6", 15, direction="E")
+        self.assertEqual(len(tiles), 9)       # 3x3
+        self.assertIn("F6", tiles)            # near face at origin
+        self.assertIn("H7", tiles)            # extends east, centered sideways
+
+    def test_cube_diagonal_dir_raises(self):
+        with self.assertRaises(ValueError):
+            grid.aoe_tiles(self.BIG, "cube", "F6", 15, direction="NE")
+
+    def test_line_30ft_east(self):
+        tiles = grid.aoe_tiles(self.BIG, "line", "C6", 30, direction="E")
+        self.assertEqual(tiles, ["D6", "E6", "F6", "G6", "H6", "I6"])
+
+    def test_cone_15ft_east_widens(self):
+        tiles = grid.aoe_tiles(self.BIG, "cone", "C6", 15, direction="E")
+        self.assertNotIn("C6", tiles)         # origin excluded
+        self.assertIn("D6", tiles)
+        self.assertIn("F4", tiles)            # 45-degree edge at distance 3
+        self.assertIn("F8", tiles)
+        self.assertNotIn("D3", tiles)         # outside the 45-degree wedge
+
+    def test_unknown_shape_raises(self):
+        with self.assertRaises(ValueError):
+            grid.aoe_tiles(self.BIG, "donut", "F6", 20)
+
+
 if __name__ == "__main__":
     unittest.main()
