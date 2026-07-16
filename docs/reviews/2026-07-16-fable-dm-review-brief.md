@@ -211,7 +211,7 @@ Nothing else gets edited without owner approval.
 ## Session ledger (update at the end of each session)
 - [x] **A** — Orient & map → `docs/ARCHITECTURE.md` + compass (done 2026-07-16)
 - [x] **B** — Domain-modeling → `CONTEXT.md` + ADRs 0001-0005 + `docs/adr/README.md` lineage note (done 2026-07-16)
-- [ ] **C** — D1 prep-phase review → findings-d1
+- [x] **C** — D1 prep-phase review → findings-d1 (done 2026-07-16; 11 findings, 3 HIGH — party sheets unread, L1 hardcode, zero prep NPCs)
 - [ ] **D** — D2 DM-humanness review (+ research) → findings-d2
 - [ ] **E** — D3 architecture-coherence review → findings-d3
 - [ ] **F** — Synthesis → summary + priorities
