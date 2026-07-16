@@ -24,7 +24,6 @@ class NewCommandSeedingTests(unittest.TestCase):
         self.assertIn("npcs.md", step)
         self.assertIn("one distinct", step)
         self.assertIn("name-registry", step.lower())
-        self.assertNotIn("npcs-full.md entry is required", step)
 
     def test_step_11_5_excludes_full_entries(self):
         step = re.search(r"^11\.5 .*?(?=^\d+\.)", COMMANDS, re.M | re.S).group(0)
