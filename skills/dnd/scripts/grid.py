@@ -140,6 +140,72 @@ def terrain_sets(spec: dict) -> tuple[set, set]:
     return difficult, impassable
 
 
+def _step_cost(tile: tuple[int, int], difficult: set) -> int:
+    return TILE_FT * 2 if tile in difficult else TILE_FT
+
+
+def cheapest_path(spec: dict, from_label: str, to_label: str):
+    """Dijkstra over the 8-connected grid. Cost = cost of the tile entered
+    (difficult x2). Returns (cost_ft, path as [(col,row), ...] incl. both
+    endpoints), or (None, []) if the target is unreachable/impassable."""
+    cols, rows = spec["cols"], spec["rows"]
+    difficult, impassable = terrain_sets(spec)
+    start, end = parse_tile(from_label), parse_tile(to_label)
+    for label, tile in ((from_label, start), (to_label, end)):
+        if not (0 <= tile[0] < cols and 0 <= tile[1] < rows):
+            raise ValueError(f"{label} is outside the {cols}x{rows} grid")
+    if end in impassable:
+        return None, []
+
+    best = {start: 0}
+    prev = {}
+    pq = [(0, start)]
+    while pq:
+        d, cur = heapq.heappop(pq)
+        if cur == end:
+            break
+        if d > best.get(cur, d):
+            continue
+        for dc in (-1, 0, 1):
+            for dr in (-1, 0, 1):
+                if dc == 0 and dr == 0:
+                    continue
+                nxt = (cur[0] + dc, cur[1] + dr)
+                if not (0 <= nxt[0] < cols and 0 <= nxt[1] < rows):
+                    continue
+                if nxt in impassable:
+                    continue
+                nd = d + _step_cost(nxt, difficult)
+                if nd < best.get(nxt, nd + 1):
+                    best[nxt] = nd
+                    prev[nxt] = cur
+                    heapq.heappush(pq, (nd, nxt))
+    if end not in best:
+        return None, []
+    path = [end]
+    while path[-1] != start:
+        path.append(prev[path[-1]])
+    return best[end], list(reversed(path))
+
+
+def move_verdict(spec: dict, from_label: str, to_label: str, speed: int) -> str:
+    cost, path = cheapest_path(spec, from_label, to_label)
+    if cost is None:
+        return f"UNREACHABLE {to_label.strip().upper()}"
+    if cost <= speed:
+        return f"OK cost={cost}ft"
+    difficult, _ = terrain_sets(spec)
+    spent, reach = 0, path[0]
+    for tile in path[1:]:
+        step = _step_cost(tile, difficult)
+        if spent + step > speed:
+            break
+        spent += step
+        reach = tile
+    return (f"ILLEGAL cost={cost}ft -- furthest reachable toward "
+            f"{to_label.strip().upper()}: {tile_name(*reach)} ({spent}ft)")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description="Combat-grid math.")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -150,6 +216,12 @@ def main(argv=None):
 
     v = sub.add_parser("validate")
     v.add_argument("spec")
+
+    m = sub.add_parser("move")
+    m.add_argument("--from", dest="frm", required=True)
+    m.add_argument("--to", required=True)
+    m.add_argument("--speed", type=int, required=True)
+    m.add_argument("--spec", required=True)
 
     args = p.parse_args(argv)
     if args.cmd == "dist":
@@ -167,6 +239,8 @@ def main(argv=None):
                 print(f"- {e}")
             sys.exit(1)
         print("VALID")
+    if args.cmd == "move":
+        print(move_verdict(load_spec(args.spec), args.frm, args.to, args.speed))
 
 
 if __name__ == "__main__":

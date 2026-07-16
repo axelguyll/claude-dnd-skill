@@ -120,5 +120,46 @@ class TerrainSetsTests(unittest.TestCase):
         self.assertNotIn((5, 0), difficult)
 
 
+class MoveTests(unittest.TestCase):
+    # SPEC is 8x6; difficult C3-D5; impassable pillar F1.
+    # SWAMP forces crossings: difficult band spans the full grid height, so no
+    # cheap detour exists (SPEC's C3-D5 band leaves rows 1-2 open — Dijkstra
+    # correctly routes around it, which is its own test below).
+    SWAMP = {"handle": "swamp", "cols": 5, "rows": 3,
+             "terrain": [{"tiles": "B1-C3", "kind": "bog", "difficult": True}]}
+
+    def test_clear_path_ok(self):
+        self.assertEqual(grid.move_verdict(SPEC, "A1", "A4", 30), "OK cost=15ft")
+
+    def test_diagonal_costs_5(self):
+        self.assertEqual(grid.move_verdict(SPEC, "A1", "D4", 30), "OK cost=25ft")
+
+    def test_difficult_terrain_doubles(self):
+        # A2 -> D2 must cross the full-height bog at B and C: 10 + 10 + 5.
+        self.assertEqual(grid.move_verdict(self.SWAMP, "A2", "D2", 30),
+                         "OK cost=25ft")
+
+    def test_path_routes_around_difficult_when_cheaper(self):
+        # B2 -> E2 stays on row 2 (all normal): 15ft, never touches C3-D5.
+        self.assertEqual(grid.move_verdict(SPEC, "B2", "E2", 30), "OK cost=15ft")
+
+    def test_illegal_reports_cost_and_furthest(self):
+        verdict = grid.move_verdict(self.SWAMP, "A2", "D2", 15)   # needs 25ft
+        self.assertTrue(verdict.startswith("ILLEGAL cost=25ft"))
+        self.assertIn("furthest reachable", verdict)
+
+    def test_impassable_blocks_target(self):
+        self.assertEqual(grid.move_verdict(SPEC, "E1", "F1", 30), "UNREACHABLE F1")
+
+    def test_walled_off_target_unreachable(self):
+        walled = {"handle": "w", "cols": 3, "rows": 1,
+                  "terrain": [{"tiles": "B1", "impassable": True}]}
+        self.assertEqual(grid.move_verdict(walled, "A1", "C1", 30), "UNREACHABLE C1")
+
+    def test_off_grid_raises(self):
+        with self.assertRaises(ValueError):
+            grid.move_verdict(SPEC, "A1", "Z9", 30)
+
+
 if __name__ == "__main__":
     unittest.main()
