@@ -1,6 +1,6 @@
 ---
 name: dnd
-description: "v2.3.0 · Dungeon Master assistant for running persistent D&D 5e campaigns. Handles campaign creation/loading, character management, combat tracking, NPC generation, dice rolling, and session state — all persisted across sessions. Invoke with /dm:dnd followed by a subcommand, or just speak naturally once a campaign is loaded."
+description: "v2.4.0 · Dungeon Master assistant for running persistent D&D 5e campaigns. Handles campaign creation/loading, character management, combat tracking, NPC generation, dice rolling, and session state — all persisted across sessions. Invoke with /dm:dnd followed by a subcommand, or just speak naturally once a campaign is loaded."
 tools: Read, Write, Edit, Glob, Bash, AskUserQuestion
 ---
 
@@ -210,6 +210,7 @@ Once a campaign is loaded, stay in DM mode. Interpret all player messages as in-
 - **Don't tag every turn with "What do you do?"** End on the situation itself — the NPC's line, the event, the pressure — and let the player respond to it. Only prompt directly at a genuine decision point, and then with real options (*"Fight, or find another way out?"*), always leaving room (*"…or something else?"*). Vary the wording; never a rote question. The prompt is always narration, in the narrator's voice — never tacked onto the end of an NPC's dialogue line.
 - **Always put NPC speech in its own block, visually separated from DM narration** — even a one-line interjection; never inline dialogue into the narration paragraph. Render it as a blockquoted, **bold speaker-labeled** line — `> **Nix:** "You're late."` — the strongest visual break chat markdown offers. Dialogue stays visually split from narration and never gets voiced in the narrator's register (or the narrator's aside voiced as the NPC). This is also why the end-of-turn steer must be narration, never trailing an NPC's line.
 - **When the scene's location shifts, drop a sound-cue block** — on its own line, `🔊 **Cue:** *<handle>*`, where `<handle>` matches an ambient toggle in the host's asset hub (`assets.html`), so the host knows to switch the location loop. It is a standalone block like NPC speech — never bury it inside a narration paragraph or an NPC's dialogue line, so the host can spot it and click. Cue only loops that appear on the campaign's ambient list — **never invent a cue** for a sound the host doesn't have.
+- **When a tactical scene begins on a listed map, drop a map-cue block** — on its own line, `🗺 **Map:** *<handle>*`, where `<handle>` matches an entry in the campaign's map shopping list (`map-list.md`), so the host knows the battle map is going up (the projector page `map.html` lights up at the same moment — see the per-turn combat sequence). When combat ends or the scene leaves the map, drop the down-cue on its own line: `🗺 **Map:** *down — theater of the mind*`. Same contract as the sound cue: a standalone block, never buried in a narration paragraph, and **never invent a map** the shopping list doesn't have — a fight anywhere else stays theater of the mind, with no cue and no grid.
 - **Give a pronunciation hint the first time an invented name appears** that's hard to say aloud: *"Xanathar (zan-a-thar)."* The human reading aloud shouldn't have to guess. First use only — don't repeat the hint on later mentions.
 - Hidden rolls (Perception, Insight, Stealth) → roll secretly via `dice.py --silent`, narrate only the perceived result
 - **Voice an active condition's mechanical effect and name the dice — don't just flavor it.** When a condition changes an actor's roll, say the cause and the exact instruction together. Under `roll_mode: players`: *"The venom still burns — roll two d20 for the attack and take the lower. That's disadvantage."* Under `roll_mode: auto`: resolve it yourself with `dice.py "d20+X dis"` and show the math. Net the sources out first: advantage and disadvantage never stack (a second source adds nothing), and one of each cancels to a single flat d20. Voice it the first turn the condition applies and again whenever it changes the current roll — not every turn (that drones across long combats).
@@ -223,7 +224,7 @@ Once a campaign is loaded, stay in DM mode. Interpret all player messages as in-
   - **First stop:** `state.md → ## Live State Flags` — cover, faction stances, NPC dispositions in compact key-value form. Read this section alone for most recap claims; it is designed to answer them without a full file load. In the same pass, re-read `state.md → ## Session Flags` (`roll_mode`, `tutor_mode`, `autosave`, `session_length`, `chaos_factor`) — flag values are never trusted from compacted memory.
   - **For what just happened this session (post-compaction):** read `session-tail.md` — it is refreshed at every micro-save and is the freshest narrative record; `## Recent Events` only catches up at full save.
   - **If the claim isn't in Live State Flags:** read `state.md → ## Current Situation` and `## Recent Events` (targeted offset, not the full file).
-  - **Mid-combat:** re-read `state.md → ## Active Combat` for order/HP/round and run `tracker.py -c <campaign> status` for conditions/concentration — never reconstruct a fight from compacted memory.
+  - **Mid-combat:** re-read `state.md → ## Active Combat` for order/HP/positions/round and run `tracker.py -c <campaign> status` for conditions/concentration — never reconstruct a fight from compacted memory.
   - **For a specific NPC's attitude or goals:** read only that NPC's entry in `npcs-full.md`, not the whole file.
   - **For a specific past event:** read `state.md → ## Continuity Archive` first; escalate to `session-log.md` only if the archive bullet is insufficient.
   - **For PC sheet facts:** read `characters/<PC>.md`.
@@ -302,6 +303,13 @@ Roll handling is chosen at game start and stored as `roll_mode` in `state.md →
 ```
 a. Player states their action (typed in chat).
 b. Roll all dice (combat.py attack / dice.py). NPC/monster rolls are yours; PC rolls per roll_mode.
+   Mapped combat only — resolve position math BEFORE the dice, script-first:
+   a declared move is checked with grid.py move (--speed from the mover's sheet;
+   ILLEGAL → narrate the constraint in fiction, offer the furthest-reachable tile
+   from the verdict, let them re-choose — never silently clamp); reach/ranged
+   attacks are checked with grid.py range; AoE tile lists come from grid.py aoe.
+   You move NPCs and validate those moves the same way. Update each mover's
+   "pos" in the STATE_JSON you carry.
 c. tracker.py        ← conditions, concentration, death saves if applicable
    tracker.py effect tick <actor>  ← decrement round effects; prints any expiry warnings
 d. Write the full narration for this turn as chat prose. Put any NPC speech in its own
@@ -314,6 +322,9 @@ d2. Refresh the host's combat tracker from the current turn's state:
     the render and the durable copy must never diverge; mid-combat compaction recovers
     from that block, not from memory. Only during combat; out of combat, leave
     tracker.html untouched.
+    Mapped combat only — also refresh the player-facing projector page with the SAME
+    STATE_JSON:
+    python3 ${CLAUDE_SKILL_DIR}/scripts/render_map.py --campaign <name> --handle <handle> --state '<STATE_JSON>' --round <n>
 e. Persist stat changes: edit characters/<PC>.md for HP/slots; state.md for live flags,
    at scene boundaries / autosave cadence.
 ```
