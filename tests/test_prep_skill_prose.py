@@ -120,6 +120,43 @@ class DMVoiceTests(unittest.TestCase):
         self.assertIn("pronunciation hint the first time an invented name appears", SKILL)
 
 
+class SolutionsWave1Tests(unittest.TestCase):
+    """Guards for the 2026-07-17 solutions-doc prose patches (wave 1)."""
+
+    def test_roll_request_ends_the_turn(self):
+        self.assertIn("The roll request ends the turn", SKILL)
+        self.assertIn("never the outcome", SKILL)
+
+    def test_auto_mode_roll_line_comes_first(self):
+        self.assertIn("the roll line comes **first** in the resolution", SKILL)
+
+    def test_dc_ladder_present(self):
+        self.assertIn("Set the DC from the standard ladder", SKILL)
+        self.assertIn("Nearly Impossible 25", SKILL)
+
+    def test_narration_mode_ladder(self):
+        self.assertIn("Match narration mode to the character's information state", SKILL)
+        self.assertIn("never smuggle the player's deduction", SKILL)
+
+    def test_death_and_dying_protocol(self):
+        self.assertIn("## Death & Dying", SKILL)
+        self.assertIn("Offer the handoff, two doors", SKILL)
+        self.assertIn("The world remembers the dead", SKILL)
+
+    def test_voice_worked_pair(self):
+        self.assertIn("page-prose vs. spoken", SKILL)
+
+    def test_prep_seeds_graph_silently(self):
+        self.assertIn("Seed the campaign graph — silently, no approval prompt", CMDS)
+
+    def test_disposition_memory_line_not_deleted(self):
+        self.assertNotIn("Remove NPCs who have returned to baseline", CMDS)
+        self.assertIn("collapse it to memory", CMDS)
+
+    def test_session_tail_md_is_primary(self):
+        self.assertIn("This is the primary tail record", CMDS)
+
+
 class DMAuthenticityTests(unittest.TestCase):
     """Guards for the 6 authenticity adjudication rules (spec:
     docs/superpowers/specs/2026-07-15-dm-authenticity-rules-design.md).

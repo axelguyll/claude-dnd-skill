@@ -105,14 +105,15 @@ these exceptions:
 2. **`skills/dnd/display/`** still exists as an empty shell containing only stale `__pycache__`
    (compiled remnants of deleted display modules). Delete the directory; also drop
    `.gitignore:13` (`**/display/session_tail.json`).
-3. **`update_skill.py:29-31`** — not display residue but a live sync trap the brief asked about:
-   the version check defaults to **upstream neuralinitiative's** VERSION, and plugin installs
-   defer to `/plugin update dm`. The running skill is a frozen copy at
-   `~/.claude/plugins/cache/neural-initiative/dm/2.3.0` (content synced 07-16, per §8 of the
-   brief). Nothing in the repo re-syncs it automatically — a fork edit does **not** reach live
-   play until manually copied. Minimum fix: a documented one-line sync step (or small
-   `sync_to_plugin.py`) + set `DND_UPDATE_VERSION_URL` to the fork. Without this, every fix in
-   this doc risks being "shipped" but not *installed* — the F1 failure class again.
+3. **`update_skill.py:29-31`** — not display residue but a sync question the brief asked about.
+   **CORRECTION (wave-0 execution, same day):** the brief's "frozen copy" characterization was
+   wrong — `~/.claude/plugins/cache/neural-initiative/dm/2.3.0/skills/dnd` is a **symlink to
+   this repo's working tree** (created 07-14, the F1 fix), so fork edits reach live play at the
+   next session start with no manual sync. The parent cache dir (CHANGELOG etc.) *is* a stale
+   copy, which is what misled the diagnostic. Remaining real risks, now documented in
+   `CLAUDE.md`: `/plugin update dm` would replace the cache dir and sever the symlink, and
+   `update_skill.py`'s default VERSION check still points at upstream — treat its output as
+   non-authoritative for this install.
 
 No other orphans: `session_tail.json` writers/verifiers are prose-live (see §1 correction),
 `tracker.html`/`map.html`/`assets.html` all have live render scripts, and no script or doc
@@ -294,7 +295,7 @@ Effort: S = minutes-to-an-hour, M = half-day, L = multi-day.
 | 1 | `npc_rename.py` add `session-tail.md` (+ fix `SKILL-commands.md:498` fallback direction; decide JSON's fate) | S | High — silent continuity corruption | 1-line + doc line |
 | 2 | Roll-turn reshape clause in `SKILL.md:290` (attempt-ok / outcome-never / request-is-final) | S | High — closes the H1 scope gap behind playthrough issue #5 | Prereq for detector crispness |
 | 3 | Narration-mode ladder + no-smuggled-deduction rule (with transcript worked example) | S | High — T1-1 is a missing rule, not an adherence failure; cheapest Tier-1 close | |
-| 4 | Sync-step fix (`DND_UPDATE_VERSION_URL` → fork + documented copy step) | S | High — without it, nothing else in this table reaches live play | The quiet blocker |
+| 4 | Sync-step check | S | ~~High~~ **Resolved in wave 0**: live install is already a symlink to the working tree (see §3 correction); residual = documented `/plugin update` warning in CLAUDE.md | Was mischaracterized by the brief |
 | 5 | Turn-gate lint in the autosave Stop hook, **log-only first**, then per-detector blocking (closer, DC-leak, roll-final, PC-auto-roll, cue validity) | M | High — flips silent→loud AND creates the first adherence metric | Step 0: verify Stop hook fires on this Windows box |
 | 6 | Death/handoff protocol (0 HP → dying → on death: canon-NPC promotion / new PC woven in / world remembers; SKILL.md rule + short command procedure) | S–M | High — uncapped campaign-ending risk, 2 independent readers flagged it | Port Sstobo's concept, adapt solo |
 | 7 | DC ladder in Dice convention | S | Medium | |
@@ -321,8 +322,8 @@ Effort: S = minutes-to-an-hour, M = half-day, L = multi-day.
 
 ## 8. Recommended sequence
 
-1. **Wave 0 — make fixes reach the table (same day):** #4 sync step; verify Stop hook fires
-   (#5 step 0). Without wave 0 everything else is theater.
+1. **Wave 0 — make fixes reach the table (same day):** #4 sync step (resolved — symlink
+   already live; warning documented) ; verify Stop hook fires (#5 step 0).
 2. **Wave 1 — prose + trivial code (one sitting):** #1, #2, #3, #6, #7, #8, #9, #11, #13.
    All S-effort; re-sync the plugin copy after.
 3. **Wave 2 — the instrument:** #5 lint, log-only. Play 2–3 short sessions normally (caveman

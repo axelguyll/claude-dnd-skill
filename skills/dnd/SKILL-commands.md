@@ -418,6 +418,15 @@ and the imported party sheets.
    sealed from the host (step 7), so this leaks nothing. **Delete the DYNAMIC and
    STRUCTURED blocks** from the template so only the authored block remains (mirrors the
    structured-import deletion at the `import` command).
+6.5. **Seed the campaign graph — silently, no approval prompt.** Everything the graph needs
+   was authored seconds ago in this same pass (npcs/world/spine), so there is nothing for the
+   host to review — asking would only leak structure. Batch-run
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/campaign_graph.py add-node` / `add-edge` for the
+   NPCs, factions, places, and relationships just written (all `--since 1`), then validate
+   with a `scene-context` query at beat 1's location. Do not narrate this step to the host
+   beyond a one-line "campaign graph seeded." (The interactive `graph init` approval flow at
+   `/dm:dnd load` is for **legacy** campaigns with player-facing history to protect — a
+   freshly-prepped campaign has none, and after this step the load-time init never triggers.)
 7. **Seal.** Tell the host: `world.md` / `spine.json` / `state.md` are sealed ("don't read your
    own campaign"); the map and ambient shopping lists are the artifacts they should read. The campaign now
    appears in `/dm:dnd load` at session 0.
@@ -472,7 +481,7 @@ Write session events to session-log.md, update state.md (location, active quests
 **Update `## Live State Flags` in state.md on every save.** This section is the compaction-resistant anchor — it holds facts that prose summaries flatten. After each session, review and update:
 - **Cover:** each PC's active cover, its status (INTACT / BLOWN / PARTIAL), and the one-line reason. Remove covers that are no longer active.
 - **Faction stances:** each faction with non-neutral standing toward the party. Format: `[Faction]: [Allied/Friendly/Neutral/Suspicious/Hostile] — [one-line reason]`. Remove factions that have returned to neutral.
-- **NPC dispositions:** each NPC with changed or notable standing. Format: `[Name]: [disposition] — [one-line reason]`. Remove NPCs who have returned to baseline.
+- **NPC dispositions:** each NPC with changed or notable standing. Format: `[Name]: [disposition] — [one-line reason]`. When an NPC returns to baseline, **don't delete the line — collapse it to memory**: `[Name]: baseline — remembers: [what they remember of the party, 1 line]`. The memory line is append-only (cap ~3 remembered items per NPC, oldest dropped); an NPC whose grudge cooled still remembers who caused it, and this line is what keeps that true across compactions. Only drop an NPC entirely if the party never meaningfully registered to them.
 
 If nothing changed in a category this session, leave it as-is. If a fact was wrong in the previous save, correct it.
 
@@ -494,8 +503,8 @@ Then update `## Faction Moves` in state.md: for each active faction, answer *"wh
 
 **Session tail archive:** at save time, write the tail files to the campaign dir — they are the compaction-survival record of the session's final stretch:
 
-1. Write `~/.claude/dnd/campaigns/<name>/session_tail.json` — this session's 5–8 most important narrative beats as a JSON list of `{"text": "...", "_camp": "<name>"}` entries.
-2. Also write `~/.claude/dnd/campaigns/<name>/session-tail.md` (human-readable snapshot — companion to the JSON, used as fallback if the JSON read fails).
+1. Write `~/.claude/dnd/campaigns/<name>/session-tail.md` — this session's 5–8 most important narrative beats, human-readable. **This is the primary tail record**: it is what `/dm:dnd load` step 5 and the post-compaction re-read ladder actually read.
+2. Also write `~/.claude/dnd/campaigns/<name>/session_tail.json` — the same beats as a JSON list of `{"text": "...", "_camp": "<name>"}` entries (structured companion for tooling; nothing in the live loop reads it).
 
 **Campaign-graph relationship-shift sweep (runs BEFORE log archival — the compression
 rule below assumes this session's edges are already in the graph):** scan this session's
