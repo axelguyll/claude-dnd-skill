@@ -209,6 +209,15 @@ def main() -> int:
     # Guard: nothing to do when no campaign is active (non-D&D session, etc.).
     if not campaign:
         return 0
+
+    # Log-only turn lint (wave 2 — solutions doc §5.1). Own opt-out flag
+    # (`turn_lint: off`), independent of autosave; must never break the hook.
+    try:
+        import turn_lint
+        turn_lint.run_and_log(stdin_obj, campaign)
+    except Exception:
+        pass
+
     if not autosave_enabled(campaign):
         return 0
 

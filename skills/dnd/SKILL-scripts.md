@@ -361,6 +361,20 @@ python3 ${CLAUDE_SKILL_DIR}/scripts/autosave_checkpoint.py --campaign <name> --s
 
 **When to use:** offer `install_autosave_hook.py` to players running long imported modules who hit compaction mid-session. The flag toggle (`/dm:dnd autosave on|off`) is the in-session control.
 
+## Turn Lint — `scripts/turn_lint.py`
+
+**Log-only** adherence lint, invoked automatically from the same Stop hook after every DM turn (no separate install). Scans the just-finished narration turn for machine-detectable rule violations — stock "what do you do?" closers, DC numbers in player-facing text (tutor lines and spell-save DCs exempt), a roll request that doesn't end the turn, a resolved PC check/save roll line under `roll_mode: players`, and sound/map cues not on the campaign's lists — and appends findings to `<campaign>/.lint-log.jsonl`. It never blocks, never prints, and never interrupts play; the log is reviewed between sessions to measure rule adherence and detector precision. Per-campaign opt-out: `turn_lint: off` in `state.md → ## Session Flags`.
+
+```bash
+# Review findings between sessions
+python3 ${CLAUDE_SKILL_DIR}/scripts/turn_lint.py --campaign <name> --tail 10
+
+# Lint a transcript's last turn by hand (dev / spot check)
+python3 ${CLAUDE_SKILL_DIR}/scripts/turn_lint.py --campaign <name> --transcript <session.jsonl>
+```
+
+The DM never reads or reacts to the lint log mid-session — it is a measurement instrument, not a play surface. Design and the blocking roadmap: `docs/reviews/2026-07-17-fable-solutions.md` §5.1.
+
 ## Lazy Corpus — `scripts/corpus_check.py`
 
 Imported (structured) campaigns keep the full module text as a lazily-loaded reference layer instead of inlining it. Layout:
