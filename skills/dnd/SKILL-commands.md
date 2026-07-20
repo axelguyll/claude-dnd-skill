@@ -1015,7 +1015,7 @@ Toggle the behind-the-scenes continuity checkpoint. Writes `autosave: on|off` to
 
 **What autosave does when on:**
 1. **In-model micro-saves** (always available, no setup): the DM silently flushes continuity at scene boundaries and on a turn cadence — see the *Continuity micro-save* rule in SKILL.md. This keeps unsaved state near zero so a context compaction costs nothing.
-2. **Deterministic Stop-hook checkpoint** (optional, opt-in): if the user has installed the hook, `autosave_checkpoint.py` snapshots `state.md` every turn and prompts a micro-save every N turns. Install once with:
+2. **Deterministic Stop-hook checkpoint** (optional, opt-in): if the user has installed the hook, `autosave_checkpoint.py` snapshots `state.md` every turn — durability only, it never asks the DM for anything. Install once with:
    ```bash
    python3 ${CLAUDE_SKILL_DIR}/scripts/install_autosave_hook.py        # enable
    python3 ${CLAUDE_SKILL_DIR}/scripts/install_autosave_hook.py --uninstall

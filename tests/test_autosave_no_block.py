@@ -84,5 +84,33 @@ class NoCheckpointInstructionTests(unittest.TestCase):
         self.assertNotIn(json.dumps({"decision": "block"})[:20], source)
 
 
+class DocsPromiseNoBackstopTests(unittest.TestCase):
+    """The SKILL files must not promise the removed cadence-prompt backstop.
+
+    bd4fc69 removed the block decision from the hook; the docs kept telling
+    the DM a prompting safety net exists. The micro-save now rides on the
+    scene-boundary habit alone, and the docs must say so.
+    """
+
+    DND = REPO / "skills" / "dnd"
+
+    def test_no_ghost_backstop_strings(self):
+        skill = (self.DND / "SKILL.md").read_text(encoding="utf-8")
+        scripts = (self.DND / "SKILL-scripts.md").read_text(encoding="utf-8")
+        commands = (self.DND / "SKILL-commands.md").read_text(encoding="utf-8")
+        self.assertNotIn("will also prompt this flush", skill)
+        self.assertNotIn("prompts the DM to flush", scripts)
+        self.assertNotIn("block` decision", scripts)
+        self.assertNotIn("prompts a micro-save", commands)
+
+    def test_no_line_claims_the_hook_prompts(self):
+        for name in ("SKILL.md", "SKILL-scripts.md", "SKILL-commands.md"):
+            text = (self.DND / name).read_text(encoding="utf-8")
+            for i, line in enumerate(text.splitlines(), 1):
+                low = line.lower()
+                if "hook" in low and "prompt" in low:
+                    self.fail(f"{name}:{i} pairs 'hook' with 'prompt': {line[:120]}")
+
+
 if __name__ == "__main__":
     unittest.main()
