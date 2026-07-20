@@ -73,7 +73,7 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 ---
 
 ## `/dm:dnd load <campaign-name>`
-0. **Pick the campaign if none was named.** If `<campaign-name>` was supplied (or the player clearly named one), use it. Otherwise `ls` the campaigns dir (`~/.claude/dnd/campaigns/` or `$DND_CAMPAIGN_ROOT/campaigns/`) and **call `AskUserQuestion`**: *"Which campaign?"* with the existing campaign names as options (most-recently-played first — sort by `state.md` mtime). The player can pick "Other" to type a name. If there are no campaigns, tell them and offer `/dm:dnd new`.
+0. **Pick the campaign if none was named.** If `<campaign-name>` was supplied (or the player clearly named one), use it. Otherwise run `python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py list-campaigns` (tab-separated: name, last-played, session count — already sorted most-recently-played first) and **call `AskUserQuestion`**: *"Which campaign?"* with the campaign names as options in that order. The player can pick "Other" to type a name. If the list is empty, tell them and offer `/dm:dnd new`.
 1. **Session setup — call `AskUserQuestion`** (not a typed y/n prompt):
 
    ***"Dice rolls?"*** — confirm how PC d20s are handled this session (see SKILL.md "Dice convention"). Pre-fill the recommended option from the existing `roll_mode` in `state.md` if present, else `players`:
@@ -106,7 +106,9 @@ Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at
 3. **Read campaign ruleset** for this session: `python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py campaign-ruleset <name>` (or import `campaign_ruleset` directly). Stash the result; pass `--ruleset <value>` to `lookup.py`, `build_supplemental.py`, and `combat.py` mastery calls so they route to the correct dataset.
 
 4. Read SKILL-scripts.md (for script syntax this session)
-5. **Mark this campaign active** (for the autosave hook): write `{"name": "<campaign-name>", "skill_dir": "<absolute skill-dir path>"}` to `$(python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py runtime-dir)/active-campaign.json`. This is what `autosave_checkpoint.py` reads to know which campaign to checkpoint (it reads only the `name` key and tolerates extras); a stale marker is harmless. The `skill_dir` key is the post-compaction recovery anchor for the skill's own path — the runtime dir is derivable cold, the skill dir is not. Then read state.md, world.md, npcs.md (index only), session-tail.md (5–8 bullets — last session's final stretch, for the recap), and all characters/*.md
+5. **Mark this campaign active** (for the autosave hook): run
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py set-active <campaign-name> --skill-dir ${CLAUDE_SKILL_DIR}` —
+   it writes `active-campaign.json` in the runtime dir with the correct shape (name + `skill_dir`, no `session_id` — an unbound marker is what lets this session's first Stop hook claim the campaign) and refuses a campaign name that doesn't exist. **Do not hand-write this file**: it is load-bearing for session binding, turn lint, and the snapshot, and all three fail silently on a malformed marker. The `skill_dir` key is the post-compaction recovery anchor for the skill's own path — the runtime dir is derivable cold, the skill dir is not. Then read state.md, world.md, npcs.md (index only), session-tail.md (5–8 bullets — last session's final stretch, for the recap), and all characters/*.md
    - **If any character sheet carries `⚠ LEVEL UP PENDING (Level N)`:** surface it and run `/dm:dnd level up` before play begins — the marker means a beat completed but its level-up passes never ran, and the spine's banding math assumes the level was applied.
    - **state.md contains `## DM Style Notes`** — read and internalize before narrating anything. These are table-specific calibration patterns that override default DM instincts.
    - **world.md:** Load in full — World Foundations, Three Truths, and factions inform narration and faction moves. Do NOT read `world-seeds.md` at load (generation artifact, not live reference).
@@ -644,7 +646,7 @@ Pull the latest skill changes from `origin/main`.
 ---
 
 ## `/dm:dnd list`
-Read `~/.claude/dnd/campaigns/*/state.md`, print summary table: campaign name | last session date | session count.
+Run `python3 ${CLAUDE_SKILL_DIR}/scripts/paths.py list-campaigns` (tab-separated: name, last-played, session count, most recent first) and format the output as a summary table: campaign name | last played | session count. Do not read each campaign's state.md by hand.
 
 ---
 

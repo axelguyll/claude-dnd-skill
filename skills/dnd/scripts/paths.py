@@ -25,6 +25,7 @@ Two distinct roots:
                    skill dir — never CLAUDE_PLUGIN_ROOT (wrong granularity).
 """
 
+import json
 import os
 import pathlib
 import shutil
@@ -193,6 +194,65 @@ def srd_path(ruleset=None):
     return data_dir() / fname
 
 
+# ── Campaign listing / active marker ──────────────────────────────────────
+# Deterministic replacements for two hand-performed load steps: the picker's
+# campaign list (ls + mtime sort) and the active-campaign.json write. The
+# marker is load-bearing for session binding, turn lint, and the snapshot,
+# and a malformed hand-write disables all three silently — so the write
+# lives here, not in model output.
+
+_SESSION_COUNT_PAT = _re.compile(r"Session count:\s*(\d+)", _re.IGNORECASE)
+
+
+def list_campaigns() -> list[dict]:
+    """Every campaign under the root: name, last-played mtime (state.md,
+    falling back to the dir), session count. Most recently played first."""
+    root = campaigns_dir()
+    if not root.is_dir():
+        return []
+    out = []
+    for camp in root.iterdir():
+        if not camp.is_dir():
+            continue
+        state = camp / "state.md"
+        sessions = 0
+        try:
+            mtime = state.stat().st_mtime if state.exists() else camp.stat().st_mtime
+        except OSError:
+            continue
+        if state.exists():
+            try:
+                m = _SESSION_COUNT_PAT.search(
+                    state.read_text(encoding="utf-8", errors="replace"))
+                if m:
+                    sessions = int(m.group(1))
+            except OSError:
+                pass
+        out.append({"name": camp.name, "mtime": mtime, "sessions": sessions})
+    out.sort(key=lambda c: c["mtime"], reverse=True)
+    return out
+
+
+def set_active(name: str, skill_dir: str | None = None) -> pathlib.Path:
+    """Write the active-campaign marker for `name`, replacing any previous
+    marker. No `session_id` key — that is the load contract: the next Stop
+    hook from the session that ran the load claims the campaign.
+
+    Raises FileNotFoundError if the campaign doesn't exist, so a typo can't
+    produce a marker pointing at nothing.
+    """
+    camp = find_campaign(name)
+    if not camp.exists():
+        raise FileNotFoundError(f"campaign not found: {name}")
+    marker = runtime_dir() / "active-campaign.json"
+    # An explicit skill_dir is stored verbatim (the caller knows its install);
+    # only the default is derived from this file's own location.
+    payload = {"name": name,
+               "skill_dir": skill_dir if skill_dir else str(skill_root())}
+    marker.write_text(json.dumps(payload), encoding="utf-8")
+    return marker
+
+
 # ── CLI passthrough ───────────────────────────────────────────────────────
 # A few helpers are useful from shell too. Keep this minimal — paths.py is
 # primarily an import surface.
@@ -210,12 +270,37 @@ if __name__ == "__main__":
     if len(sys.argv) >= 3 and sys.argv[1] == "campaign-dir":
         print(find_campaign(sys.argv[2]))
         sys.exit(0)
+    if len(sys.argv) >= 2 and sys.argv[1] == "list-campaigns":
+        import datetime
+        for c in list_campaigns():
+            stamp = datetime.datetime.fromtimestamp(c["mtime"]).strftime(
+                "%Y-%m-%d %H:%M")
+            print(f"{c['name']}\t{stamp}\t{c['sessions']}")
+        sys.exit(0)
+    if len(sys.argv) >= 3 and sys.argv[1] == "set-active":
+        skill = None
+        rest = sys.argv[3:]
+        if "--skill-dir" in rest:
+            i = rest.index("--skill-dir")
+            if i + 1 >= len(rest):
+                print("set-active: --skill-dir needs a path", file=sys.stderr)
+                sys.exit(2)
+            skill = rest[i + 1]
+        try:
+            marker = set_active(sys.argv[2], skill)
+        except FileNotFoundError as e:
+            print(str(e), file=sys.stderr)
+            sys.exit(1)
+        print(marker)
+        sys.exit(0)
     print(
         "usage:\n"
         "  python3 paths.py campaign-ruleset <campaign-name>\n"
         "  python3 paths.py srd-path [2014|2024]\n"
         "  python3 paths.py runtime-dir\n"
-        "  python3 paths.py campaign-dir <campaign-name>",
+        "  python3 paths.py campaign-dir <campaign-name>\n"
+        "  python3 paths.py list-campaigns\n"
+        "  python3 paths.py set-active <campaign-name> [--skill-dir <path>]",
         file=sys.stderr,
     )
     sys.exit(2)
