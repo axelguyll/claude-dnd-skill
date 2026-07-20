@@ -120,5 +120,82 @@ class FlagAndMarkerTests(unittest.TestCase):
         self.assertTrue((runtime / "test-camp.autocheckpoint.md").exists())
 
 
+class LintHeartbeatTests(unittest.TestCase):
+    """Caller-owned liveness evidence for the turn lint.
+
+    run_and_log never raises by contract, so the caller's blanket only ever
+    catches import death — exactly the observed 2026-07-20 failure class.
+    The heartbeat converts silence into evidence: no record in
+    .lint-health.jsonl means "the hook never ran", never "the lint died
+    quietly".
+    """
+
+    CAMPAIGN = "hb-camp"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.ac = _import("autosave_checkpoint", "autosave_checkpoint.py")
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        os.environ["DND_CAMPAIGN_ROOT"] = self.tmp.name
+        os.environ["DND_RUNTIME_DIR"] = os.path.join(self.tmp.name, ".runtime")
+        self.addCleanup(lambda: os.environ.pop("DND_CAMPAIGN_ROOT", None))
+        self.addCleanup(lambda: os.environ.pop("DND_RUNTIME_DIR", None))
+        self.camp = pathlib.Path(self.tmp.name) / "campaigns" / self.CAMPAIGN
+        self.camp.mkdir(parents=True)
+        (self.camp / "state.md").write_text(
+            "# state\n\n## Session Flags\nroll_mode: players\n",
+            encoding="utf-8")
+        self.transcript = self.camp / "session.jsonl"
+        self.transcript.write_text(
+            json.dumps({"type": "user",
+                        "message": {"role": "user", "content": "hi"}}) + "\n" +
+            json.dumps({"type": "assistant",
+                        "message": {"role": "assistant",
+                                    "content": [{"type": "text",
+                                                 "text": "Make a DC 15 check."}]}})
+            + "\n", encoding="utf-8")
+
+    def _health(self):
+        f = self.camp / ".lint-health.jsonl"
+        if not f.exists():
+            return []
+        return [json.loads(line) for line in
+                f.read_text(encoding="utf-8").splitlines()]
+
+    def test_ok_heartbeat_with_findings_count(self):
+        self.ac._run_lint({"transcript_path": str(self.transcript),
+                           "session_id": "s1"}, self.CAMPAIGN)
+        records = self._health()
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["event"], "lint_ok")
+        self.assertEqual(records[0]["findings"], 1)  # the DC leak
+        self.assertEqual(records[0]["session_id"], "s1")
+        self.assertIn("ts", records[0])
+
+    def test_import_death_heartbeat(self):
+        broken = type(sys)("turn_lint")  # module with no run_and_log
+        saved = sys.modules.get("turn_lint")
+        sys.modules["turn_lint"] = broken
+        try:
+            self.ac._run_lint({"transcript_path": str(self.transcript),
+                               "session_id": "s1"}, self.CAMPAIGN)
+        finally:
+            if saved is not None:
+                sys.modules["turn_lint"] = saved
+            else:
+                del sys.modules["turn_lint"]
+        records = self._health()
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["event"], "lint_raised")
+
+    def test_heartbeat_failure_never_raises(self):
+        """Best-effort: an unwritable campaign dir must not break the hook."""
+        self.ac._run_lint({"transcript_path": str(self.transcript)},
+                          "no-such-campaign")  # find_campaign -> nonexistent
+
+
 if __name__ == "__main__":
     unittest.main()

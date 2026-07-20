@@ -63,13 +63,28 @@ _ROTE_CLOSER = re.compile(
 )
 _DC_NUMBER = re.compile(r"\bDC\s*\d+")
 _SPELL_SAVE_DC = re.compile(r"spell save DC", re.I)
+# Deterministic format triggers, not a hedge lexicon: the imperative verbs
+# ("roll/make/give me"), the "I need a / let's see a" request idioms (article
+# required, so "I need you to check on the horses" stays narration), and the
+# bare house format "<Ability> (<Skill>) check". A trigger miss silences BOTH
+# halves of roll_not_final, so coverage here is coverage of the whole rule.
+_ABILITIES = "Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma"
 _ROLL_REQUEST = re.compile(
     r"(?:\broll\b|\bmake\b|\bgive me\b)[^.\n!?]{0,80}?"
-    r"(?:\bcheck\b|\bsave\b|saving throw|\bd20\b|attack roll)",
+    r"(?:\bcheck\b|\bsave\b|saving throw|\bd20\b|attack roll)"
+    r"|\b(?:I\s+need|let'?s\s+see)\s+(?:a|an|another|one\s+more)"
+    r"[^.\n!?]{0,60}?(?:\bcheck\b|\bsave\b|saving throw|\bd20\b)"
+    r"|\b(?:%s)\s*\((?:%s)\)\s+(?:check|save)\b" % (_ABILITIES, _SKILLS),
     re.I,
 )
 _RESOLVED_ROLL_LINE = re.compile(
     r"\*\*Roll:?\*\*.*\bd20\b.*(?:→|->)", re.I)
+# The skill's own canonical inline roll format (SKILL.md: "Piper —
+# Perception: d20+5 = 18"): a resolved d20 with `=` or an arrow. Which lines
+# are violations is decided by PC-name attribution against campaign data
+# (characters/*.md), not by format-guessing — the earlier detector matched
+# only the session-1 violation's bold-prefix shape.
+_RESOLVED_D20 = re.compile(r"\bd20\s*(?:[+-]\s*\d+)?\s*(?:=|→|->)\s*\**\d+", re.I)
 # Lead-in narration that pre-judges the roll — states or implies the outcome,
 # the odds, or how hard the attempt looks (SKILL.md: "the canonical
 # violation" is "this isn't going to win on skill"). Four general categories,
@@ -81,13 +96,21 @@ _RESOLVED_ROLL_LINE = re.compile(
 
 # 1. Negated-ease: the DM hedges that the attempt won't be simple/quick,
 #    without naming odds or a target trait directly.
+#    The "doesn't just <anything>" arm matched plain intensifiers ("the rain
+#    doesn't just fall — it hammers", permitted restatement), so it is
+#    constrained to yield-class verbs: things a task or target does when it
+#    gives way without a contest (probe-verified both directions 2026-07-20).
+#    Cost: hedges via other verbs ("he doesn't just talk to strangers") are
+#    no longer caught. Accepted — precision first.
 _NEGATED_EASE = re.compile(
     r"\bnot\s+exactly\s+\w+\b|"
     r"\b(?:isn'?t|aren'?t|wasn'?t|weren'?t|is\s+not|are\s+not|was\s+not|were\s+not)"
     r"\s+(?:going\s+to\s+be\s+)?(?:easy|simple|quick|straightforward)\b|"
     r"\bnot\s+going\s+to\s+be\s+(?:easy|simple|quick|straightforward)\b|"
     r"\b(?:won'?t|wouldn'?t)\s+be\s+(?:easy|simple|quick|straightforward)\b|"
-    r"\b(?:doesn'?t|don'?t|didn'?t)\s+just\s+\w+\b|"
+    r"\b(?:doesn'?t|don'?t|didn'?t)\s+just\s+"
+    r"(?:open|give|yield|budge|break|fold|hand|let|step\s+aside|"
+    r"back\s+down|roll\s+over)\b|"
     r"\bno\s+easy\s+(?:thing|task|feat|matter)\b",
     re.I,
 )
@@ -111,18 +134,33 @@ _NEGATED_EASE = re.compile(
 #    a copular/perception verb ("looks tricky"), "the odds" as a subject, or an
 #    attributive "a hard man to read". Verified against the six legitimate
 #    phrasings that broke the lexicon — none of them match these.
+#    `rough` and `steep` are excluded from the perception-verb arm: their
+#    literal physical senses dominate pre-roll narration ("the rope feels
+#    rough" is texture, "the trail looks steep" is terrain — both permitted
+#    scene description, probe-verified 2026-07-20). Cost: a difficulty rating
+#    carried only by those two adjectives ("this climb looks steep") is no
+#    longer caught. Accepted — same tradeoff as the category-2 removal above.
 _DIFFICULTY_PREDICATION = re.compile(
     r"\b(?:look|looks|looked|seem|seems|seemed|sound|sounds|sounded|"
     r"feel|feels|felt)\s+(?:like\s+)?(?:a\s+)?"
-    r"(?:tricky|hard|tough|difficult|dicey|risky|rough|steep|easy|simple)\b|"
+    r"(?:tricky|hard|tough|difficult|dicey|risky|easy|simple)\b|"
     r"\bthe\s+odds\b|"
     r"\ba\s+(?:hard|tough|tricky|difficult)\s+\w+\s+to\s+\w+\b",
     re.I,
 )
 # 3. Outcome pre-judgment: the DM states how the roll will land before it's
-#    made.
+#    made. The "isn't going to <anything>" arm matched every negated future
+#    ("the storm isn't going to break" — weather, permitted), so it is
+#    constrained to success-class verbs, or refusal-class verbs with a
+#    personal subject (probe-verified both directions 2026-07-20). Cost: a
+#    pre-judgment carried by a verb outside these classes ("this isn't going
+#    to impress her") is no longer caught. Accepted — precision first.
 _OUTCOME_PREJUDGMENT = re.compile(
-    r"\b(?:isn'?t|aren'?t|wasn'?t)\s+going\s+to\s+\w+\b|"
+    r"\b(?:isn'?t|aren'?t|wasn'?t|weren'?t)\s+going\s+to\s+"
+    r"(?:work|succeed|help|matter|win|land|cut\s+it|be\s+enough|"
+    r"get\s+you\s+(?:anywhere|far|in|past)|go\s+(?:well|your\s+way))\b|"
+    r"\b(?:he|she|they)\s+(?:isn'?t|aren'?t|wasn'?t|weren'?t)\s+going\s+to\s+"
+    r"(?:listen|budge|buy|believe|bend|crack|talk|yield|give)\b|"
     r"\bwon'?t\s+work\b|"
     r"\bno\s+way\s+(?:he|she|they|it|you)\b|"
     r"\bgood\s+luck\s+with\b|"
@@ -131,12 +169,20 @@ _OUTCOME_PREJUDGMENT = re.compile(
 )
 # 4. Target-resistance framing: the DM pre-rates the opposition (how alert,
 #    guarded, or hard-to-fool the target is) rather than letting the roll
-#    decide it.
+#    decide it. The bare single-word arms (guarded|wary|careful|sharp|
+#    suspicious) were the removed category-2 defect with different words —
+#    probed 2026-07-20, they fired on 6 of 6 permitted phrasings ("careful of
+#    the loose stones", "a sharp crack", "the guarded gate"), because the
+#    permitted and forbidden senses share the vocabulary and only grammatical
+#    role separates them. Only constructions predicated of the target remain.
+#    Cost: a pre-rating carried by a bare adjective ("Marska is wary") is no
+#    longer caught. Accepted — same measurement, same conclusion as the
+#    category-2 removal above.
 _TARGET_RESISTANCE = re.compile(
-    r"\bguarded\b|\bwary\b|\bcareful\b|\bsharp(?:-eyed)?\b|\bsuspicious\b|"
     r"\bnot\s+(?:stupid|foolish|gullible|slow|careless|easily\s+fooled)\b|"
     r"\bhard\s+to\s+(?:read|fool|convince|persuade)\b|"
-    r"\bquick[- ]witted\b|\bon\s+(?:her|his|their|your)\s+guard\b|\bno\s+fool\b",
+    r"\bsharp-eyed\b|\bquick[- ]witted\b|"
+    r"\bon\s+(?:her|his|their|your)\s+guard\b|\bno\s+fool\b",
     re.I,
 )
 _ODDS_HEDGE_CATEGORIES = (
@@ -271,21 +317,43 @@ def check_roll_not_final(text: str, roll_mode: str) -> list[dict]:
     return out
 
 
-def check_pc_auto_roll(text: str, roll_mode: str) -> list[dict]:
+def check_pc_auto_roll(text: str, roll_mode: str,
+                       pc_names: set[str] | frozenset[str] = frozenset()) -> list[dict]:
+    """Resolved PC roll lines under roll_mode: players.
+
+    Two shapes: the legacy bold `**Roll:** … d20 … →` line (kept — NPC rolls
+    in that format also land in the log, the excerpt lets the reviewer
+    judge), and the house format `<Name> — <Skill>: d20+N = M`, attributed
+    by PC name at line start against `pc_names` (lowercased, from
+    campaign_pc_names). A resolved line starting with an NPC name passes.
+    """
     if roll_mode != "players":
         return []
+    pc_line = None
+    if pc_names:
+        pc_line = re.compile(
+            r"^\s*\**(?P<who>%s)\b\**\s*[—–:,-]"
+            % "|".join(re.escape(n) for n in sorted(pc_names)),
+            re.I)
     out = []
     for line in text.splitlines():
-        if not _RESOLVED_ROLL_LINE.search(line):
-            continue
-        kind = ("skill check" if _SKILL_PAREN.search(line)
-                else "save" if re.search(r"\bsave\b|saving throw", line, re.I)
-                else None)
-        if kind is None:
-            continue
-        out.append({"detector": "pc_auto_roll",
-                    "detail": f"resolved {kind} roll line under roll_mode: players",
-                    "excerpt": _excerpt(line)})
+        if _RESOLVED_ROLL_LINE.search(line):
+            kind = ("skill check" if _SKILL_PAREN.search(line)
+                    else "save" if re.search(r"\bsave\b|saving throw", line, re.I)
+                    else None)
+            if kind is not None:
+                out.append({"detector": "pc_auto_roll",
+                            "detail": f"resolved {kind} roll line under roll_mode: players",
+                            "excerpt": _excerpt(line)})
+                continue
+        if pc_line and _RESOLVED_D20.search(line):
+            m = pc_line.match(line)
+            if m:
+                out.append({"detector": "pc_auto_roll",
+                            "detail": f"resolved roll line attributed to PC "
+                                      f"{m.group('who').strip('* ')} under "
+                                      f"roll_mode: players",
+                            "excerpt": _excerpt(line)})
     return out
 
 
@@ -310,13 +378,14 @@ def check_unknown_cue(text: str, ambient_handles: set[str],
 
 
 def lint_turn(text: str, flags: dict, ambient_handles: set[str],
-              map_handles: set[str]) -> list[dict]:
+              map_handles: set[str],
+              pc_names: set[str] | frozenset[str] = frozenset()) -> list[dict]:
     roll_mode = flags.get("roll_mode", "players")
     findings = []
     findings += check_rote_closer(text)
     findings += check_dc_leak(text)
     findings += check_roll_not_final(text, roll_mode)
-    findings += check_pc_auto_roll(text, roll_mode)
+    findings += check_pc_auto_roll(text, roll_mode, pc_names)
     findings += check_unknown_cue(text, ambient_handles, map_handles)
     return findings
 
@@ -344,6 +413,33 @@ def session_flags(camp_dir: pathlib.Path) -> dict:
             if m:
                 flags[m.group(1)] = m.group(2)
     return flags
+
+
+def campaign_pc_names(camp_dir: pathlib.Path) -> set[str]:
+    """Lowercased PC names from `<campaign>/characters/*.md` filenames and
+    `# ` headers. The ground truth for pc_auto_roll attribution."""
+    names: set[str] = set()
+    chars = camp_dir / "characters"
+    if not chars.is_dir():
+        return names
+    for f in chars.glob("*.md"):
+        stem = f.stem.replace("_", " ").replace("-", " ").strip()
+        if stem:
+            names.add(stem.lower())
+        try:
+            for line in f.read_text(encoding="utf-8",
+                                    errors="replace").splitlines():
+                line = line.strip()
+                if not line.startswith("# "):
+                    continue
+                head = re.split(r"[—–(,:]|\s-\s", line[2:], maxsplit=1)[0]
+                head = head.strip(" *")
+                if head and len(head.split()) <= 4:
+                    names.add(head.lower())
+                break
+        except OSError:
+            pass
+    return names
 
 
 def asset_handles(camp_dir: pathlib.Path) -> tuple[set[str], set[str]]:
@@ -473,7 +569,8 @@ def run_and_log(stdin_obj: dict, campaign: str) -> int:
         if not text.strip():
             return 0
         ambient, maps = asset_handles(camp_dir)
-        findings = lint_turn(text, flags, ambient, maps)
+        findings = lint_turn(text, flags, ambient, maps,
+                             campaign_pc_names(camp_dir))
         if not findings:
             return 0
         ts = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
@@ -484,8 +581,24 @@ def run_and_log(stdin_obj: dict, campaign: str) -> int:
                                     "campaign": campaign, **v},
                                    ensure_ascii=True) + "\n")
         return len(findings)
-    except Exception:
-        return 0  # a lint failure must never break the Stop hook
+    except Exception as exc:
+        # A lint failure must never break the Stop hook — but a mid-body
+        # crash must be distinguishable from a clean turn in the file the
+        # reviewer already reads. Best-effort; the caller's heartbeat in
+        # autosave_checkpoint covers the import-death case this can't.
+        try:
+            camp_dir = paths.find_campaign(campaign)
+            ts = datetime.datetime.now(datetime.timezone.utc).isoformat(
+                timespec="seconds")
+            with open(camp_dir / LOG_NAME, "a", encoding="utf-8") as f:
+                f.write(json.dumps(
+                    {"ts": ts, "session_id": stdin_obj.get("session_id"),
+                     "campaign": campaign, "detector": "lint_error",
+                     "detail": f"{type(exc).__name__}: {exc}"[:200]},
+                    ensure_ascii=True) + "\n")
+        except Exception:
+            pass
+        return 0
 
 
 # ── CLI (manual review / dev) ─────────────────────────────────────────────
@@ -524,10 +637,11 @@ def main() -> int:
     if args.backfill:
         flags = session_flags(camp_dir)
         ambient, maps = asset_handles(camp_dir)
+        pcs = campaign_pc_names(camp_dir)
         turns = all_turns(args.transcript)
         total = 0
         for i, text in enumerate(turns, 1):
-            findings = lint_turn(text, flags, ambient, maps)
+            findings = lint_turn(text, flags, ambient, maps, pcs)
             total += len(findings)
             for v in findings:
                 print(f"turn {i:>3}  {v['detector']}: {v['detail']}")
@@ -541,7 +655,8 @@ def main() -> int:
         print("(no assistant turn found in transcript)")
         return 0
     ambient, maps = asset_handles(camp_dir)
-    findings = lint_turn(text, session_flags(camp_dir), ambient, maps)
+    findings = lint_turn(text, session_flags(camp_dir), ambient, maps,
+                         campaign_pc_names(camp_dir))
     if not findings:
         print("clean: no findings")
         return 0

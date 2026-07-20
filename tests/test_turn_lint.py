@@ -168,13 +168,19 @@ class RollNotFinalTests(unittest.TestCase):
         self.assertIn("target-resistance framing", out[0]["detail"])
 
     def test_typographic_apostrophe_still_matches(self):
-        """U+2019 must not silently disable the contraction-based categories."""
+        """U+2019 must not silently disable the contraction-based categories.
+
+        Asserts the *category* (negated-ease claims this string first), so the
+        test fails if the apostrophe fold silently breaks for that category
+        while another one keeps the count at 1.
+        """
         for apostrophe in ("'", "’"):
             with self.subTest(apostrophe=apostrophe):
                 text = (f"This isn{apostrophe}t going to be easy. "
                         "Give me a Strength (Athletics) check.")
                 out = turn_lint.check_roll_not_final(text, "players")
                 self.assertEqual(len(out), 1)
+                self.assertIn("negated-ease", out[0]["detail"])
 
     def test_physical_attempt_lead_in_allowed_stairs(self):
         text = ("You take the stairs two at a time. "
@@ -196,13 +202,14 @@ class RollNotFinalTests(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertIn("difficulty predication", out[0]["detail"])
 
-    def test_permitted_attempt_narration_never_fires(self):
-        """SKILL.md:306 allows describing what the character physically does.
+    def test_removed_lexicon_vocabulary_stays_clean(self):
+        """Regression guard for the *removed* bare difficulty lexicon only.
 
-        These six broke an earlier bare-lexicon version (hard|easy|simple|chance
-        matched regardless of grammatical role) — 6 false positives out of 6. The
-        adjective here modifies the PC's action, not the difficulty of the task.
-        A detector that fires on permitted behaviour trains the reader to ignore it.
+        These six broke that version (hard|easy|simple|chance matched
+        regardless of grammatical role) — 6 false positives out of 6. They pin
+        the old lexicon's vocabulary; the general permitted-narration property
+        is asserted by test_permitted_narration_probe_suite, which probes the
+        surviving categories with fresh phrasings.
         """
         permitted = [
             "You push hard against the door, shoulder set. "
@@ -229,12 +236,130 @@ class RollNotFinalTests(unittest.TestCase):
         self.assertEqual(len(out), 1)
         self.assertIn("target-resistance framing", out[0]["detail"])
 
+    def test_permitted_narration_probe_suite(self):
+        """Fresh permitted narration against the SURVIVING categories.
+
+        2026-07-20 Pass A probes, verified by executing each detector: the
+        first six fired 6/6 on _TARGET_RESISTANCE's bare single-word arms
+        (guarded/wary/careful/sharp/suspicious — the removed category-2 defect
+        with different words); the rest fired on literal-physical perception
+        senses, negated futures, and intensifier restatements.
+        """
+        permitted = [
+            # bare target-resistance vocabulary in permitted roles
+            "You pick your way along the ledge, careful of the loose stones. "
+            "Give me a Dexterity (Acrobatics) check.",
+            "You keep a wary eye on the door while you work. "
+            "Give me a Dexterity (Sleight of Hand) check.",
+            "A sharp crack comes from the rafters above you. "
+            "Give me a Wisdom (Perception) check.",
+            "The blade is sharp and freshly oiled. "
+            "Give me an Intelligence (Investigation) check.",
+            "Two men stand at the guarded gate ahead. "
+            "Give me a Dexterity (Stealth) check.",
+            "You slip the suspicious package under your coat. "
+            "Give me a Dexterity (Sleight of Hand) check.",
+            # literal physical senses of rough/steep (texture, terrain)
+            "The rope feels rough against your palms. "
+            "Give me a Strength (Athletics) check.",
+            "The trail looks steep past the treeline. "
+            "Give me a Constitution save.",
+            # negated futures that pre-judge nothing
+            "The storm isn't going to break before nightfall. "
+            "Give me a Wisdom (Survival) check.",
+            "He wasn't going to wait forever, and you both knew it. "
+            "Give me a Charisma (Persuasion) check.",
+            # intensifier restatement, not negated ease
+            "The rain doesn't just fall here — it hammers. "
+            "Give me a Wisdom (Perception) check.",
+        ]
+        for text in permitted:
+            with self.subTest(text=text[:44]):
+                out = [f for f in turn_lint.check_roll_not_final(text, "players")
+                       if "lead-in" in f["detail"]]
+                self.assertEqual(out, [], f"false positive on permitted narration: {text}")
+
+    def test_flags_target_resistance_not_easily_fooled_construction(self):
+        text = ("The moneylender is quick-witted and patient. "
+                "Give me a Charisma (Deception) check.")
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("target-resistance framing", out[0]["detail"])
+
+    def test_flags_target_resistance_sharp_eyed(self):
+        text = ("The quartermaster is a sharp-eyed old soldier. "
+                "Give me a Dexterity (Sleight of Hand) check.")
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("target-resistance framing", out[0]["detail"])
+
+    def test_flags_outcome_prejudgment_work_class_verb(self):
+        text = ("Flattery isn't going to work on her. "
+                "Give me a Charisma (Persuasion) check.")
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("outcome pre-judgment", out[0]["detail"])
+
+    def test_flags_outcome_prejudgment_target_wont_listen(self):
+        text = ("He wasn't going to listen to reason. "
+                "Give me a Charisma (Persuasion) check.")
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("outcome pre-judgment", out[0]["detail"])
+
+    def test_flags_negated_ease_doesnt_just_open(self):
+        text = ("That door doesn't just open for strangers. "
+                "Give me a Strength (Athletics) check.")
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("negated-ease", out[0]["detail"])
+
     def test_flags_invented_no_way_hes_just_handing_it_over(self):
         text = ("No way he's just handing it over. "
                 "Give me a Charisma (Persuasion) check.")
         out = turn_lint.check_roll_not_final(text, "players")
         self.assertEqual(len(out), 1)
         self.assertIn("outcome pre-judgment", out[0]["detail"])
+
+    # -- trigger coverage: a request the trigger misses silences BOTH halves
+    # of roll_not_final, including the deterministic trailing check.
+
+    def test_trigger_i_need_a_check_form(self):
+        text = ("I need a Charisma (Persuasion) check from you. "
+                + self.PADDING)
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("followed by", out[0]["detail"])
+
+    def test_trigger_lets_see_a_check_form(self):
+        text = ("Let's see a Dexterity (Sleight of Hand) check. "
+                + self.PADDING)
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+
+    def test_trigger_bare_ability_skill_check_form(self):
+        text = ("Charisma (Persuasion) check, whenever you're ready. "
+                + self.PADDING)
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+
+    def test_trigger_house_forms_hedged_lead_in_caught(self):
+        text = ("The steward is on his guard tonight. "
+                "I need a Charisma (Deception) check.")
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("lead-in", out[0]["detail"])
+
+    def test_trigger_not_fooled_by_close_check_narration(self):
+        """'check' in plain narration is not a roll request."""
+        for text in ("That was a close check. " + self.PADDING,
+                     "I need you to check on the horses before dawn. "
+                     + self.PADDING,
+                     "The last check nearly cost you the lantern. "
+                     + self.PADDING):
+            with self.subTest(text=text[:40]):
+                self.assertEqual(
+                    turn_lint.check_roll_not_final(text, "players"), [])
 
 
 class PcAutoRollTests(unittest.TestCase):
@@ -256,6 +381,74 @@ class PcAutoRollTests(unittest.TestCase):
     def test_auto_mode_skipped(self):
         line = "**Roll:** Wisdom (Perception), d20+0 → **12**"
         self.assertEqual(turn_lint.check_pc_auto_roll(line, "auto"), [])
+
+    # -- house format: SKILL.md's canonical inline roll line, attributed by
+    # PC name from campaign data instead of format-guessing.
+
+    def test_flags_house_format_pc_roll(self):
+        line = "Piper — Perception: d20+5 = 18"
+        out = turn_lint.check_pc_auto_roll(line, "players", pc_names={"piper"})
+        self.assertEqual(len(out), 1)
+        self.assertIn("Piper", out[0]["detail"])
+
+    def test_flags_house_format_bold_name_arrow(self):
+        line = "**Piper** — Stealth: d20+3 → 14"
+        self.assertEqual(
+            len(turn_lint.check_pc_auto_roll(line, "players",
+                                             pc_names={"piper"})), 1)
+
+    def test_house_format_npc_line_passes(self):
+        line = "Goblin — Perception: d20+2 = 11"
+        self.assertEqual(
+            turn_lint.check_pc_auto_roll(line, "players", pc_names={"piper"}), [])
+
+    def test_house_format_multiword_pc_name(self):
+        line = "Piper Vale — Insight: d20+1 -> 14"
+        self.assertEqual(
+            len(turn_lint.check_pc_auto_roll(line, "players",
+                                             pc_names={"piper vale"})), 1)
+
+    def test_pc_name_in_prose_without_roll_passes(self):
+        text = "Piper — quick as ever — ducks behind the cart."
+        self.assertEqual(
+            turn_lint.check_pc_auto_roll(text, "players", pc_names={"piper"}), [])
+
+    def test_pc_name_mid_line_of_npc_roll_passes(self):
+        """Attribution requires the name at line start, not anywhere in it."""
+        line = "The guard swings at Piper: d20+4 = 17 vs AC 15"
+        self.assertEqual(
+            turn_lint.check_pc_auto_roll(line, "players", pc_names={"piper"}), [])
+
+    def test_no_pc_names_keeps_legacy_behavior(self):
+        line = "Piper — Perception: d20+5 = 18"
+        self.assertEqual(turn_lint.check_pc_auto_roll(line, "players"), [])
+
+
+class CampaignPcNamesTests(unittest.TestCase):
+    def _campaign(self, files):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        camp = pathlib.Path(tmp.name)
+        chars = camp / "characters"
+        chars.mkdir()
+        for fname, header in files.items():
+            (chars / fname).write_text(header, encoding="utf-8")
+        return camp
+
+    def test_names_from_filenames_and_headers(self):
+        camp = self._campaign({
+            "Piper.md": "# Piper — Level 3 Rogue\n",
+            "Holg_Ironjaw.md": "# Holg Ironjaw (Barbarian 2)\n",
+        })
+        names = turn_lint.campaign_pc_names(camp)
+        self.assertIn("piper", names)
+        self.assertIn("holg ironjaw", names)
+
+    def test_missing_characters_dir_is_empty(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.assertEqual(turn_lint.campaign_pc_names(pathlib.Path(tmp.name)),
+                         set())
 
 
 class UnknownCueTests(unittest.TestCase):
@@ -365,6 +558,42 @@ class RunAndLogTests(unittest.TestCase):
             entries = [json.loads(line) for line in log.splitlines()]
             detectors = {e["detector"] for e in entries}
             self.assertEqual(detectors, {"dc_leak", "rote_closer"})
+
+    def test_body_crash_writes_lint_error_record(self):
+        """A mid-body crash must be distinguishable from a clean turn in the
+        file the reviewer already reads — while still returning 0 (the
+        never-break-a-turn constraint)."""
+        with tempfile.TemporaryDirectory() as root:
+            camp = pathlib.Path(root) / "campaigns" / "lint-test-camp"
+            camp.mkdir(parents=True)
+            (camp / "state.md").write_text(
+                "# state\n\n## Session Flags\nroll_mode: players\n",
+                encoding="utf-8")
+            transcript = camp / "session.jsonl"
+            transcript.write_text(_jsonl(
+                _user("hi"), _assistant_text("A quiet street.")),
+                encoding="utf-8")
+            old_root = os.environ.get("DND_CAMPAIGN_ROOT")
+            os.environ["DND_CAMPAIGN_ROOT"] = root
+            orig_last_turn = turn_lint.last_turn
+            turn_lint.last_turn = lambda p: (_ for _ in ()).throw(
+                RuntimeError("probe crash"))
+            try:
+                n = turn_lint.run_and_log(
+                    {"transcript_path": str(transcript), "session_id": "s1"},
+                    "lint-test-camp")
+            finally:
+                turn_lint.last_turn = orig_last_turn
+                if old_root is None:
+                    del os.environ["DND_CAMPAIGN_ROOT"]
+                else:
+                    os.environ["DND_CAMPAIGN_ROOT"] = old_root
+            self.assertEqual(n, 0)
+            log = (camp / turn_lint.LOG_NAME).read_text(encoding="utf-8")
+            entries = [json.loads(line) for line in log.splitlines()]
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(entries[0]["detector"], "lint_error")
+            self.assertIn("RuntimeError", entries[0]["detail"])
 
     def test_turn_lint_off_flag_disables(self):
         with tempfile.TemporaryDirectory() as root:

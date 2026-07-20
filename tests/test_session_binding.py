@@ -238,6 +238,15 @@ class HookClaimRaceTests(unittest.TestCase):
         self._run_hook("play-1", self.play_transcript)
         self.assertEqual(self._bound(), "play-1")
 
+    def test_lint_heartbeat_written_for_owning_session(self):
+        """Acceptance (fix-plan Phase 3.7): heartbeat present after a hook run."""
+        self._run_hook("play-1", self.play_transcript)
+        health = (pathlib.Path(self.tmp.name) / "campaigns" / self.CAMPAIGN
+                  / ".lint-health.jsonl")
+        self.assertTrue(health.exists(), "no lint heartbeat after a hook run")
+        record = json.loads(health.read_text(encoding="utf-8").splitlines()[0])
+        self.assertEqual(record["event"], "lint_ok")
+
     def test_bound_owner_keeps_acting_without_reproving_load(self):
         self._run_hook("play-1", self.play_transcript)
         for snap in self.runtime.glob("*.autocheckpoint.md"):

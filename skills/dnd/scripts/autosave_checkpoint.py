@@ -35,6 +35,7 @@ Manual usage (for testing / forcing a snapshot):
 import sys
 import os
 import json
+import datetime
 import pathlib
 import argparse
 import re
@@ -335,11 +336,7 @@ def main() -> int:
 
     # Log-only turn lint (wave 2 — solutions doc §5.1). Own opt-out flag
     # (`turn_lint: off`), independent of autosave; must never break the hook.
-    try:
-        import turn_lint
-        turn_lint.run_and_log(stdin_obj, campaign)
-    except Exception:
-        pass
+    _run_lint(stdin_obj, campaign)
 
     if not autosave_enabled(campaign):
         return 0
@@ -355,6 +352,40 @@ def main() -> int:
     prev = _load_counter(counter_file)
     _save_counter(counter_file, count_turn(stdin_obj, prev, every_n), campaign)
     return 0
+
+
+def _run_lint(stdin_obj: dict, campaign: str) -> None:
+    """Invoke the log-only turn lint and record a caller-owned heartbeat.
+
+    `run_and_log` never raises by contract, so the try below only ever
+    catches import/call-surface failure — exactly the failure class observed
+    on 2026-07-20 (interpreter/path regressions), which a marker written
+    inside run_and_log could not cover. One health record is appended to
+    `<campaign>/.lint-health.jsonl` beside the lint log either way, so the
+    between-sessions reviewer can distinguish "no findings" from "lint never
+    ran": silence in the health file means the hook itself didn't run.
+    Best-effort throughout — no hook output, no exit-code changes.
+    """
+    raised = False
+    findings = None
+    try:
+        import turn_lint
+        findings = turn_lint.run_and_log(stdin_obj, campaign)
+    except Exception:
+        raised = True
+    try:
+        camp_dir = paths.find_campaign(campaign)
+        if not camp_dir.exists():
+            return
+        ts = datetime.datetime.now(datetime.timezone.utc).isoformat(
+            timespec="seconds")
+        record = {"ts": ts, "session_id": stdin_obj.get("session_id"),
+                  "event": "lint_raised" if raised else "lint_ok",
+                  "findings": findings}
+        with open(camp_dir / ".lint-health.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(record) + "\n")
+    except Exception:
+        pass
 
 
 def _every_from_env() -> int:
