@@ -297,10 +297,7 @@ Read `## Campaign Arc` at every session load alongside `## DM Style Notes`. The 
 
 7. **All Is Lost (beat 2b) is earned, not punitive.** A genuine setback must precede the resolution — something fails, is lost, or collapses under the weight of the story. It comes from the world's logic, not arbitrary bad luck. The party should feel it coming and be unable to stop it.
 
-8. **Pre-emption is a revision trigger, not a beat-skipper.** When players act faster than the world (the most common 2b failure mode), the world_pressure event you wrote can play out fully WITHOUT the beat's consequence landing. Example: 2b's pressure was "Vedra walks Orlen down the Stairs" — the party disrupted the walk, so the pressure played out, but the consequence ("the party experiences a cost they cannot afford") didn't land. The beat is now overdue and its current shape is wrong; **at /dm:dnd end, treat this as automatic input to `/dm:dnd arc revise`.** Do not wait for the player to flag it. Pick from three landing-path templates:
-   - **Cost path:** the party paid for moving fast — exposure, lost cover, burned ally, expended resource that mattered. The setback is the cost, not the failure.
-   - **Secondary consequence path:** the world responds to having been pre-empted in a way the party didn't anticipate. The faction/NPC the party prevented from acting now does something WORSE because they read the disruption as a signal.
-   - **Deferred path:** the original setback is delayed but inevitable. Adjust `world_pressure` to a NEW pressure that points at the same `what_changes`, scheduled for the next 1–2 sessions.
+8. **Pre-emption is a revision trigger, not a beat-skipper.** When players act faster than the world (the most common 2b failure mode), the world_pressure event you wrote can play out fully WITHOUT the beat's consequence landing. Example: 2b's pressure was "Vedra walks Orlen down the Stairs" — the party disrupted the walk, so the pressure played out, but the consequence ("the party experiences a cost they cannot afford") didn't land. The beat is now overdue and its current shape is wrong; **at /dm:dnd end, treat this as automatic input to `/dm:dnd arc revise`.** Do not wait for the player to flag it. The three landing-path templates (cost / secondary consequence / deferred) live in the `arc revise` procedure (SKILL-commands.md) — pick one there.
 
 9. **Do not reference the arc document to players.** Players experience it as natural story progression.
 
@@ -308,7 +305,7 @@ Read `## Campaign Arc` at every session load alongside `## DM Style Notes`. The 
 
 **Stakes decide whether a roll happens — not the player's wording.** Before calling for any check, ask whether failure has a cost and whether anything actively opposes the player. No meaningful failure state and nothing resisting them → no roll; narrate it done (glancing around a safe tavern, recalling common lore). Call for a check only when failure costs something or a force actively resists. Don't reflexively roll because the player used a skill verb.
 
-**Set the DC from the standard ladder — before calling for the roll, silently.** Very Easy 5 · Easy 10 · Moderate 13 · Hard 15 · Very Hard 20 · Nearly Impossible 25. Pick the band from how hard the task is *in the fiction for anyone competent*, not from how much you want the player to succeed. When torn between two bands, take 13; reserve 18+ for stakes the fiction has visibly earned. The number stays behind the screen always (see "Never state the DC") — the ladder exists so the same task meets the same number next session.
+**Set the DC from the standard ladder — before calling for the roll, silently.** Very Easy 5 · Easy 10 · Moderate 13 · Hard 15 · Very Hard 20 · Nearly Impossible 25. Pick the band from how hard the task is *in the fiction for anyone competent*, not from how much you want the player to succeed. When torn between two bands, take 13; reserve 18+ for stakes the fiction has visibly earned. The ladder exists so the same task meets the same number next session ("Never state the DC" applies, before the roll and after it).
 
 **When a check is warranted, the fiction decides which ability and skill apply — then call it by its full "Ability (Skill)" name.** 5e has no fixed action-to-skill table; pick the ability from what the character is physically doing and the skill from the domain of the task: **Arcana** for magical/eldritch symbols, runes, and spell-lore; **History** for the past, dead languages, and non-magical lore; **Investigation** for deducing from physical evidence or a mechanism; **Perception** for merely noticing something. Then name it in full — *"Intelligence (Arcana) check"*, not a bare *"Intelligence check"* — the way a real DM calls it at the table. (Same eldritch wall deciphered as *History* if it's a lost civilisation's mundane script, or *Investigation* if it's a physical mechanism rather than magic — the fiction, not the object, sets the skill.)
 
@@ -376,15 +373,11 @@ When a PC dies:
 
 ## Milestone Leveling
 
-**Authored (prepped) campaigns level on story milestones, not XP** — and they are the only campaigns in this fork with a leveling path at all (legacy `new`/`import` have none). There is no XP counter and no
-`xp.py award` in the loop. The party levels when a **beat** completes and the spine's
-`level_up_to` for that beat is non-null.
-
-- Do NOT run `scripts/xp.py award`. Ignore XP thresholds entirely.
-- On beat completion, follow `/dm:dnd beat complete` (SKILL-commands.md): it marks the
-  pending level-up from the beat's `level_up_to`, then runs the normal `/dm:dnd level up`
-  procedure to apply HP + features to reach that level.
-- If the beat's `level_up_to` is null, the party does not level on that beat.
+**There is no XP in this fork — ever.** Never run `scripts/xp.py award`, never emit an
+XP-award block, ignore XP thresholds entirely. Authored (prepped) campaigns are the only
+campaigns with a leveling path at all (legacy `new`/`import` have none); they level when
+a **beat** completes and the spine's `level_up_to` for that beat is non-null. The
+procedure lives in `/dm:dnd beat complete` (SKILL-commands.md).
 
 ---
 
