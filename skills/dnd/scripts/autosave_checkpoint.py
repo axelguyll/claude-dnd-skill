@@ -33,6 +33,7 @@ Manual usage (for testing / forcing a snapshot):
 import sys
 import os
 import json
+import pathlib
 import argparse
 import shutil
 
@@ -79,6 +80,56 @@ def active_campaign() -> str | None:
         return None
     name = data.get("name")
     return name if isinstance(name, str) and name.strip() else None
+
+
+def bound_session(marker_path=None) -> str | None:
+    """The session id that claimed the active campaign, if any."""
+    marker = pathlib.Path(marker_path) if marker_path else paths.runtime_dir() / ACTIVE_MARKER
+    try:
+        data = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    sid = data.get("session_id") if isinstance(data, dict) else None
+    return sid if isinstance(sid, str) and sid.strip() else None
+
+
+def claim_session(marker_path=None, session_id: str | None = None) -> None:
+    """Record `session_id` as the owner of the active campaign.
+
+    Merges into the existing marker rather than replacing it — `skill_dir` is the
+    post-compaction recovery anchor (SKILL.md:248) and must survive.
+    """
+    if not session_id:
+        return
+    marker = pathlib.Path(marker_path) if marker_path else paths.runtime_dir() / ACTIVE_MARKER
+    try:
+        data = json.loads(marker.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return
+    except (OSError, ValueError):
+        return
+    data["session_id"] = session_id
+    try:
+        marker.write_text(json.dumps(data), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def session_owns_campaign(marker_path=None, session_id: str | None = None) -> bool:
+    """Whether this session may act on the active campaign.
+
+    Gating on "a campaign is loaded" alone is not enough: a dev session editing
+    this repo has one loaded too, and would otherwise get continuity-flush
+    prompts and have its own turns linted as if they were DM narration.
+
+    Unbound markers admit anyone — `/dm:dnd load` rewrites the marker without a
+    session id, so the first Stop hook after a load claims it for the session
+    that is actually playing.
+    """
+    if not session_id:
+        return True  # manual CLI runs carry no session id
+    bound = bound_session(marker_path)
+    return bound is None or bound == session_id
 
 
 def autosave_enabled(campaign: str) -> bool:
@@ -209,6 +260,16 @@ def main() -> int:
     # Guard: nothing to do when no campaign is active (non-D&D session, etc.).
     if not campaign:
         return 0
+
+    # Guard: only the session that is actually playing may act on the campaign.
+    # A dev session with a campaign loaded would otherwise be told to flush
+    # continuity anchors, and would have its own turns linted as DM narration.
+    # An override (--campaign) is an explicit manual run and skips the gate.
+    if not args.campaign:
+        session_id = stdin_obj.get("session_id")
+        if not session_owns_campaign(session_id=session_id):
+            return 0
+        claim_session(session_id=session_id)
 
     # Log-only turn lint (wave 2 — solutions doc §5.1). Own opt-out flag
     # (`turn_lint: off`), independent of autosave; must never break the hook.
