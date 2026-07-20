@@ -3,24 +3,23 @@
 autosave_checkpoint.py — behind-the-scenes continuity checkpoint for long sessions.
 
 Designed to run as a Claude Code **Stop hook** (install with
-`install_autosave_hook.py`). It fires after every DM turn and does two things:
+`install_autosave_hook.py`). It fires after every DM turn and takes a
+**deterministic snapshot**: copies the active campaign's `state.md` to a
+recovery file under the runtime dir. Pure file I/O — no model needed.
 
-  1. **Deterministic snapshot** (every turn): copies the active campaign's
-     `state.md` to a recovery file under the runtime dir. Pure file I/O — no
-     model needed.
-
-  2. **Cadence checkpoint** (every Nth turn): emits a Stop-hook `block`
-     decision whose `reason` instructs the DM to do a silent micro-save
-     (Live State Flags + new graph edges + session tail) *before* yielding the
-     turn — so a context compaction can never cost more than a few turns of
-     continuity. Keyed on turn count because the model cannot see its own
-     context-usage percentage.
+It never writes a Stop-hook `decision`, and so never costs a turn. Earlier
+versions blocked every Nth turn with a `reason` instructing the DM to flush
+continuity anchors. Measurement of a real session (2026-07-20) killed that
+design: each block spawned a full model turn averaging ~33s that re-wrote
+files the DM had already saved in-turn, while returning a few dozen
+characters to the player. Continuity is carried by the in-turn saves the
+skill already performs and by `/dm:dnd save`; durability is carried by the
+snapshot below. A hook that hands work back to the model is not background
+work — it is a round-trip with extra steps.
 
 The hook is a no-op (exit 0, no output) when:
   - no campaign is active (no runtime marker — e.g. a non-D&D Claude session),
-  - the active campaign has `autosave: off` in `state.md → ## Session Flags`,
-  - `stop_hook_active` is set (we are already inside a continuation — never
-    block twice, which would loop).
+  - the active campaign has `autosave: off` in `state.md → ## Session Flags`.
 
 Stdin (Stop-hook JSON, when run as a hook):
   {"session_id": "...", "stop_hook_active": false, "hook_event_name": "Stop", ...}
@@ -40,17 +39,8 @@ import shutil
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import paths  # noqa: E402
 
-DEFAULT_EVERY_N = 10          # cadence checkpoint every N turns
+DEFAULT_EVERY_N = 10          # turn-counter period, reported by --status
 ACTIVE_MARKER = "active-campaign.json"   # written by /dm:dnd load, under runtime_dir()
-
-CHECKPOINT_REASON = (
-    "Continuity autosave checkpoint (turn cadence reached). Before finishing, "
-    "silently update state.md → ## Live State Flags (cover, faction stances, "
-    "NPC dispositions), append any new relationships to the campaign graph, and "
-    "make sure the latest beats are captured in the session tail. Do not narrate "
-    "this to the player and do not run a full /dm:dnd save (no session-log "
-    "rewrite) — just flush the continuity anchors, then end your turn."
-)
 
 
 def _read_stdin_json():
@@ -197,21 +187,19 @@ def _save_counter(path, turns: int, campaign: str) -> None:
         pass
 
 
-def decide(stdin_obj: dict, prev_turns: int, every_n: int = DEFAULT_EVERY_N):
-    """Pure cadence logic — separated from I/O so it is unit-testable.
+def count_turn(stdin_obj: dict, prev_turns: int, every_n: int = DEFAULT_EVERY_N) -> int:
+    """Advance the turn counter. Pure, so it stays unit-testable.
 
-    Returns (new_turns, block_reason_or_None).
-      - If `stop_hook_active` is set, never block (avoid continuation loops) and
-        leave the counter where it is.
-      - Otherwise increment; when the new count is a multiple of every_n, emit a
-        block reason and reset the counter to 0.
+    Counts DM turns for `--status` and wraps at every_n. Nothing acts on the
+    wrap any more — the counter is telemetry, not a trigger. A turn arriving
+    while another Stop hook holds a continuation open is not ours to count.
     """
     if stdin_obj.get("stop_hook_active"):
-        return prev_turns, None
+        return prev_turns
     turns = prev_turns + 1
     if every_n > 0 and turns % every_n == 0:
-        return 0, CHECKPOINT_REASON
-    return turns, None
+        return 0
+    return turns
 
 
 def snapshot(campaign: str) -> None:
@@ -231,20 +219,15 @@ def _safe(name: str) -> str:
     return "".join(c if c.isalnum() or c in "-_" else "_" for c in name)
 
 
-def _emit_block(reason: str) -> None:
-    """Print the Stop-hook decision JSON that tells Claude to continue."""
-    print(json.dumps({"decision": "block", "reason": reason}))
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Continuity autosave checkpoint.")
     parser.add_argument("--campaign", help="Override the active campaign (testing).")
     parser.add_argument("--snapshot-only", action="store_true",
-                        help="Take the deterministic snapshot and exit; never block.")
+                        help="Take the deterministic snapshot and exit.")
     parser.add_argument("--status", action="store_true",
                         help="Print active campaign and current turn count.")
     parser.add_argument("--every", type=int, default=None,
-                        help=f"Turns between cadence checkpoints (default {DEFAULT_EVERY_N}).")
+                        help=f"Turn-counter period (default {DEFAULT_EVERY_N}).")
     args = parser.parse_args()
 
     stdin_obj = {} if (args.campaign or args.status) else _read_stdin_json()
@@ -291,11 +274,7 @@ def main() -> int:
     every_n = args.every if args.every is not None else _every_from_env()
     counter_file = _counter_path(stdin_obj.get("session_id"), campaign)
     prev = _load_counter(counter_file)
-    new_turns, reason = decide(stdin_obj, prev, every_n)
-    _save_counter(counter_file, new_turns, campaign)
-
-    if reason:
-        _emit_block(reason)
+    _save_counter(counter_file, count_turn(stdin_obj, prev, every_n), campaign)
     return 0
 
 

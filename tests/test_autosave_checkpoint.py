@@ -1,6 +1,6 @@
 """
 test_autosave_checkpoint.py — cadence + flag logic for the autosave Stop hook
-(v2.2.0). Covers the pure `decide()` cadence function, Session-Flags parsing,
+(v2.2.0). Covers the pure `count_turn()` counter, Session-Flags parsing,
 and the active-campaign marker. No Claude Code harness is exercised — only the
 deterministic pieces the hook relies on.
 
@@ -28,40 +28,37 @@ def _import(name, filename):
     return mod
 
 
-class DecideCadenceTests(unittest.TestCase):
+class TurnCounterTests(unittest.TestCase):
+    """`count_turn` is telemetry for --status. It triggers nothing.
+
+    It replaced `decide()`, which returned a block reason on every Nth turn.
+    See tests/test_autosave_no_block.py for why that behavior was removed.
+    """
+
     @classmethod
     def setUpClass(cls):
         cls.ac = _import("autosave_checkpoint", "autosave_checkpoint.py")
 
-    def test_increments_without_blocking(self):
-        turns, reason = self.ac.decide({}, 0, every_n=10)
-        self.assertEqual(turns, 1)
-        self.assertIsNone(reason)
+    def test_increments(self):
+        self.assertEqual(self.ac.count_turn({}, 0, every_n=10), 1)
 
-    def test_blocks_and_resets_on_cadence(self):
-        turns, reason = self.ac.decide({}, 9, every_n=10)
-        self.assertEqual(turns, 0)
-        self.assertIsNotNone(reason)
-        self.assertIn("checkpoint", reason.lower())
+    def test_wraps_at_period(self):
+        self.assertEqual(self.ac.count_turn({}, 9, every_n=10), 0)
 
-    def test_never_blocks_when_continuation_active(self):
-        # stop_hook_active means we're already inside a forced continuation.
-        turns, reason = self.ac.decide({"stop_hook_active": True}, 9, every_n=10)
-        self.assertEqual(turns, 9)
-        self.assertIsNone(reason)
+    def test_holds_when_another_continuation_is_active(self):
+        self.assertEqual(
+            self.ac.count_turn({"stop_hook_active": True}, 9, every_n=10), 9)
 
-    def test_full_cycle_blocks_once_per_period(self):
-        turns, blocks = 0, 0
+    def test_every_zero_never_wraps(self):
+        self.assertEqual(self.ac.count_turn({}, 5, every_n=0), 6)
+
+    def test_full_cycle_wraps_once_per_period(self):
+        turns, wraps = 0, 0
         for _ in range(30):
-            turns, reason = self.ac.decide({}, turns, every_n=10)
-            if reason:
-                blocks += 1
-        self.assertEqual(blocks, 3)
-
-    def test_every_zero_never_blocks(self):
-        turns, reason = self.ac.decide({}, 5, every_n=0)
-        self.assertEqual(turns, 6)
-        self.assertIsNone(reason)
+            turns = self.ac.count_turn({}, turns, every_n=10)
+            if turns == 0:
+                wraps += 1
+        self.assertEqual(wraps, 3)
 
 
 class FlagAndMarkerTests(unittest.TestCase):
