@@ -33,9 +33,16 @@ HOOK_EVENT = "Stop"
 
 
 def checkpoint_command() -> str:
-    """Absolute command the hook runs. Resolved at install time."""
+    """Absolute command the hook runs. Resolved at install time.
+
+    Both halves are absolute on purpose. The harness runs this in whatever shell
+    it spawns, whose PATH we cannot see from here — a bare `python3` resolves in
+    Git Bash and not in PowerShell, so the hook dies silently on every turn with
+    no symptom but a missing log. `sys.executable` is the interpreter running
+    this installer, which is by definition one that works.
+    """
     script = paths.scripts_dir() / "autosave_checkpoint.py"
-    return f'python3 "{script}"'
+    return f'"{sys.executable}" "{script}"'
 
 
 def default_settings_path() -> str:

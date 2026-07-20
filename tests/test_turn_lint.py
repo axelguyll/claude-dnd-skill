@@ -235,5 +235,53 @@ class RunAndLogTests(unittest.TestCase):
             self.assertFalse((camp / turn_lint.LOG_NAME).exists())
 
 
+class AllTurnsTests(unittest.TestCase):
+    """Backfill support — lint a whole session, not just its final turn.
+
+    Needed because the Stop hook can be broken or absent while play happens
+    (the `python3` interpreter regression, 2026-07-20): the transcript is the
+    only surviving record of those turns.
+    """
+
+    def _write(self, *objs):
+        f = tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False,
+                                        encoding="utf-8")
+        f.write(_jsonl(*objs))
+        f.close()
+        self.addCleanup(os.unlink, f.name)
+        return f.name
+
+    def test_splits_on_genuine_user_messages(self):
+        path = self._write(
+            _user("i climb out"), _assistant_text("The shutter gives."),
+            _user("i run"), _assistant_text("The alley opens."),
+            _user("i stop"), _assistant_text("Rain, and nothing else."),
+        )
+        self.assertEqual(len(turn_lint.all_turns(path)), 3)
+
+    def test_tool_results_do_not_split_turns(self):
+        path = self._write(
+            _user("i roll"),
+            _assistant_text("Rolling."),
+            _tool_use("python3 dice.py d20+3"),
+            _tool_result(),
+            _assistant_text("19 — the mare settles."),
+        )
+        turns = turn_lint.all_turns(path)
+        self.assertEqual(len(turns), 1)
+        self.assertIn("Rolling.", turns[0])
+        self.assertIn("the mare settles", turns[0])
+
+    def test_last_turn_matches_final_all_turns_entry(self):
+        path = self._write(
+            _user("a"), _assistant_text("first"),
+            _user("b"), _assistant_text("second"),
+        )
+        self.assertEqual(turn_lint.all_turns(path)[-1], turn_lint.last_turn(path))
+
+    def test_missing_transcript_returns_empty(self):
+        self.assertEqual(turn_lint.all_turns("/no/such/transcript.jsonl"), [])
+
+
 if __name__ == "__main__":
     unittest.main()

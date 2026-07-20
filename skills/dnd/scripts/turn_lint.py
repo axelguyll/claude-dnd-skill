@@ -247,6 +247,60 @@ def last_turn(transcript_path: str | pathlib.Path) -> str:
     return "\n\n".join(reversed(texts))
 
 
+def _is_turn_boundary(obj: dict) -> bool:
+    """True for a genuine user prompt. Tool results are not boundaries — they
+    are feedback inside the DM's own turn."""
+    if obj.get("type") != "user":
+        return False
+    content = (obj.get("message") or {}).get("content")
+    if isinstance(content, str):
+        return True
+    if isinstance(content, list):
+        return not any(isinstance(b, dict) and b.get("type") == "tool_result"
+                       for b in content)
+    return False
+
+
+def all_turns(transcript_path: str | pathlib.Path) -> list[str]:
+    """Every player-facing DM turn in the transcript, oldest first.
+
+    `last_turn` is the live-hook path and only ever needs the final turn. This
+    walks the whole session so a backfill can recover turns played while the
+    hook was broken or not yet installed.
+    """
+    p = pathlib.Path(transcript_path)
+    try:
+        raw_lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+    turns: list[str] = []
+    current: list[str] = []
+
+    def flush():
+        if current:
+            joined = "\n\n".join(current).strip()
+            if joined:
+                turns.append(joined)
+            current.clear()
+
+    for raw in raw_lines:
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            obj = json.loads(raw)
+        except ValueError:
+            continue
+        if _is_turn_boundary(obj):
+            flush()
+        elif obj.get("type") == "assistant":
+            for block in (obj.get("message") or {}).get("content") or []:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    current.append(block.get("text", ""))
+    flush()
+    return turns
+
+
 # ── Hook entry point ──────────────────────────────────────────────────────
 
 def run_and_log(stdin_obj: dict, campaign: str) -> int:
@@ -291,6 +345,9 @@ def main() -> int:
     ap.add_argument("--campaign", required=True)
     ap.add_argument("--transcript", help="Session .jsonl — lint its last turn and print findings.")
     ap.add_argument("--tail", type=int, help="Print the last N lint-log entries.")
+    ap.add_argument("--backfill", action="store_true",
+                    help="With --transcript: lint every turn in the session and "
+                         "report per-turn, instead of only the last one.")
     args = ap.parse_args()
 
     camp_dir = paths.find_campaign(args.campaign)
@@ -310,6 +367,22 @@ def main() -> int:
 
     if not args.transcript:
         ap.error("--transcript or --tail required")
+
+    if args.backfill:
+        flags = session_flags(camp_dir)
+        ambient, maps = asset_handles(camp_dir)
+        turns = all_turns(args.transcript)
+        total = 0
+        for i, text in enumerate(turns, 1):
+            findings = lint_turn(text, flags, ambient, maps)
+            total += len(findings)
+            for v in findings:
+                print(f"turn {i:>3}  {v['detector']}: {v['detail']}")
+                print(f"          {v['excerpt']}")
+        rate = (total / len(turns)) if turns else 0.0
+        print(f"\n{len(turns)} turns · {total} findings · {rate:.2f} per turn")
+        return 0
+
     text = last_turn(args.transcript)
     if not text.strip():
         print("(no assistant turn found in transcript)")
