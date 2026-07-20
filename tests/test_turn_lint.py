@@ -80,6 +80,162 @@ class RollNotFinalTests(unittest.TestCase):
     def test_no_request_no_finding(self):
         self.assertEqual(turn_lint.check_roll_not_final(self.PADDING, "players"), [])
 
+    def test_flags_lead_in_hedge_hand_over(self):
+        text = ("That's the kind of thing a man doesn't just hand over. "
+                "Give me a Charisma (Persuasion) check")
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["detector"], "roll_not_final")
+        self.assertIn("lead-in", out[0]["detail"])
+
+    def test_flags_lead_in_hedge_not_exactly_slow(self):
+        text = ("bold, but Fenna's not exactly slow. "
+                "Give me a Charisma (Deception) check.")
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("lead-in", out[0]["detail"])
+
+    def test_known_miss_different_reasons_not_flagged(self):
+        # KNOWN MISS, accepted deliberately: an earlier version had a
+        # `different reasons? to` pattern hardcoded to this exact fixture.
+        # It had no general relationship to odds/outcome language ("you two
+        # have different reasons to be here" is innocuous) and was dropped
+        # as overfitting on code review. This fixture is not caught by any
+        # of the four general categories and that is expected, not a bug —
+        # see check_roll_not_final's docstring for the recall tradeoff.
+        text = ("He's not you though — different man, different reasons to "
+                "hold something back. Give me another Charisma (Persuasion) check.")
+        self.assertEqual(turn_lint.check_roll_not_final(text, "players"), [])
+
+    def test_flags_lead_in_canonical_wont_win_on_skill(self):
+        text = ("He looks you over, unimpressed — this isn't going to win on "
+                "skill. Give me a Charisma (Persuasion) check.")
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("lead-in", out[0]["detail"])
+
+    def test_physical_attempt_lead_in_allowed_brace_door(self):
+        text = ("You brace your shoulder against the door. "
+                "Give me a Strength (Athletics) check.")
+        self.assertEqual(turn_lint.check_roll_not_final(text, "players"), [])
+
+    def test_physical_attempt_lead_in_allowed_slip_toward_rail(self):
+        text = ("You slip toward the rail, keeping the crates between you "
+                "and the lamplight. Give me a Dexterity (Stealth) check.")
+        self.assertEqual(turn_lint.check_roll_not_final(text, "players"), [])
+
+    def test_bare_request_no_lead_in_allowed(self):
+        text = "Give me a Wisdom (Perception) check."
+        self.assertEqual(turn_lint.check_roll_not_final(text, "players"), [])
+
+    def test_earlier_beat_lead_in_out_of_lookback_window(self):
+        text = (
+            "This isn't going to win on skill, not against him.\n\n"
+            + "The tavern settles into evening noise. " * 15
+            + "\n\n"
+            + "You brace your shoulder against the door. "
+            "Give me a Strength (Athletics) check."
+        )
+        self.assertEqual(turn_lint.check_roll_not_final(text, "players"), [])
+
+    # -- calibration: coordinator-supplied cases, added on review --------
+
+    def test_scenery_description_not_flagged(self):
+        text = ("The lock is old and the corridor is dark. "
+                "Give me a Dexterity (Sleight of Hand) check.")
+        self.assertEqual(turn_lint.check_roll_not_final(text, "players"), [])
+
+    def test_flags_attributive_difficulty_hard_man_to_like(self):
+        """Fires via difficulty predication, not target resistance.
+
+        Named for the category that actually matches: predication is checked
+        first and its attributive branch ("a hard <noun> to <verb>") claims
+        this string, so _TARGET_RESISTANCE never sees it. The previous name
+        claimed to guard target-resistance framing and would have passed with
+        that regex deleted outright.
+        """
+        text = "Garrick is a hard man to like. Give me a Charisma (Persuasion) check."
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("difficulty predication", out[0]["detail"])
+
+    def test_flags_target_resistance_on_its_own_category(self):
+        """A phrasing only _TARGET_RESISTANCE can claim — deleting it fails this."""
+        text = ("The steward is on his guard tonight. "
+                "Give me a Charisma (Deception) check.")
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("target-resistance framing", out[0]["detail"])
+
+    def test_typographic_apostrophe_still_matches(self):
+        """U+2019 must not silently disable the contraction-based categories."""
+        for apostrophe in ("'", "’"):
+            with self.subTest(apostrophe=apostrophe):
+                text = (f"This isn{apostrophe}t going to be easy. "
+                        "Give me a Strength (Athletics) check.")
+                out = turn_lint.check_roll_not_final(text, "players")
+                self.assertEqual(len(out), 1)
+
+    def test_physical_attempt_lead_in_allowed_stairs(self):
+        text = ("You take the stairs two at a time. "
+                "Give me a Dexterity (Acrobatics) check.")
+        self.assertEqual(turn_lint.check_roll_not_final(text, "players"), [])
+
+    # -- invented violations: novel phrasings, none drawn from the fixtures
+    # above, to demonstrate the categories generalize rather than memorize.
+
+    def test_flags_invented_lock_looks_tricky(self):
+        text = "This lock looks tricky. Give me a Dexterity (Sleight of Hand) check."
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("difficulty predication", out[0]["detail"])
+
+    def test_flags_invented_odds_arent_great(self):
+        text = "The odds aren't great here. Give me a Wisdom (Insight) check."
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("difficulty predication", out[0]["detail"])
+
+    def test_permitted_attempt_narration_never_fires(self):
+        """SKILL.md:306 allows describing what the character physically does.
+
+        These six broke an earlier bare-lexicon version (hard|easy|simple|chance
+        matched regardless of grammatical role) — 6 false positives out of 6. The
+        adjective here modifies the PC's action, not the difficulty of the task.
+        A detector that fires on permitted behaviour trains the reader to ignore it.
+        """
+        permitted = [
+            "You push hard against the door, shoulder set. "
+            "Give me a Strength (Athletics) check.",
+            "You take a chance on the loose rail and swing out over the drop. "
+            "Give me a Dexterity (Acrobatics) check.",
+            "You keep it simple — hand over the coin, say nothing else. "
+            "Give me a Charisma (Deception) check.",
+            "The rain is coming down hard now. Give me a Wisdom (Perception) check.",
+            "You go easy on the latch, barely breathing. "
+            "Give me a Dexterity (Sleight of Hand) check.",
+            "It has been a long day and a hard road. Give me a Constitution save.",
+        ]
+        for text in permitted:
+            with self.subTest(text=text[:40]):
+                out = [f for f in turn_lint.check_roll_not_final(text, "players")
+                       if "lead-in" in f["detail"]]
+                self.assertEqual(out, [], f"false positive on permitted narration: {text}")
+
+    def test_flags_invented_sharp_not_easily_fooled(self):
+        text = ("She's sharp, and not easily fooled by a pretty face. "
+                "Give me a Charisma (Deception) check.")
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("target-resistance framing", out[0]["detail"])
+
+    def test_flags_invented_no_way_hes_just_handing_it_over(self):
+        text = ("No way he's just handing it over. "
+                "Give me a Charisma (Persuasion) check.")
+        out = turn_lint.check_roll_not_final(text, "players")
+        self.assertEqual(len(out), 1)
+        self.assertIn("outcome pre-judgment", out[0]["detail"])
+
 
 class PcAutoRollTests(unittest.TestCase):
     def test_flags_transcript_style_resolved_check(self):

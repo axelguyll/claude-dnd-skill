@@ -12,8 +12,11 @@ Detectors (rule anchor in SKILL.md):
   rote_closer     stock "what do you do?" closer at turn end (Narration principles)
   dc_leak         DC number in player-facing text ("Never state the DC";
                   tutor lines and the PC's own spell save DC are exempt)
-  roll_not_final  roll request followed by substantive narration
-                  ("The roll request ends the turn" — roll_mode: players only)
+  roll_not_final  roll request preceded by odds/outcome-hedging lead-in
+                  narration, or followed by substantive narration
+                  ("The roll request ends the turn" — roll_mode: players only;
+                  the lead-in half is recall-biased by design — see
+                  check_roll_not_final)
   pc_auto_roll    visible resolved check/save roll line under roll_mode: players
                   (the "never fall back to dice.py for a PC" hard constraint;
                   heuristic — NPC skill rolls formatted the same way will also
@@ -67,6 +70,88 @@ _ROLL_REQUEST = re.compile(
 )
 _RESOLVED_ROLL_LINE = re.compile(
     r"\*\*Roll:?\*\*.*\bd20\b.*(?:→|->)", re.I)
+# Lead-in narration that pre-judges the roll — states or implies the outcome,
+# the odds, or how hard the attempt looks (SKILL.md: "the canonical
+# violation" is "this isn't going to win on skill"). Four general categories,
+# each a named regex so a reviewer can see which one fired (the `detail`
+# string reports the category name) — deliberately NOT one opaque alternation
+# curve-fit to known fixtures. Recall-biased: this detector is log-only, so a
+# false positive costs a log line while a false negative costs a session of
+# believing the rules held when they didn't.
+
+# 1. Negated-ease: the DM hedges that the attempt won't be simple/quick,
+#    without naming odds or a target trait directly.
+_NEGATED_EASE = re.compile(
+    r"\bnot\s+exactly\s+\w+\b|"
+    r"\b(?:isn'?t|aren'?t|wasn'?t|weren'?t|is\s+not|are\s+not|was\s+not|were\s+not)"
+    r"\s+(?:going\s+to\s+be\s+)?(?:easy|simple|quick|straightforward)\b|"
+    r"\bnot\s+going\s+to\s+be\s+(?:easy|simple|quick|straightforward)\b|"
+    r"\b(?:won'?t|wouldn'?t)\s+be\s+(?:easy|simple|quick|straightforward)\b|"
+    r"\b(?:doesn'?t|don'?t|didn'?t)\s+just\s+\w+\b|"
+    r"\bno\s+easy\s+(?:thing|task|feat|matter)\b",
+    re.I,
+)
+# 2. REMOVED — bare difficulty/odds vocabulary (hard|tough|tricky|odds|chance|
+#    easy|simple, unfiltered by sentence role). It assumed the tight lead-in
+#    window made a structural check unnecessary. Measured against legitimate
+#    pre-roll narration it produced a false positive on 6 of 6 samples, because
+#    the lead-in window is exactly where the *permitted* attempt description
+#    lives and it shares this vocabulary: "you push hard against the door",
+#    "you keep it simple", "you go easy on the latch", "the rain is coming down
+#    hard". SKILL.md explicitly allows all of those. A detector that fires on
+#    the behaviour a rule permits trains the reader to ignore it.
+#    Cost of removal: real violations carried only by a bare adjective
+#    ("Garrick is a hard man to like") are no longer caught. Accepted — see
+#    check_roll_not_final's docstring on what this detector does not cover.
+# 2b. Difficulty *predication* — the replacement for the removed lexicon.
+#    Bare adjectives are ambiguous ("push hard" describes the attempt, which is
+#    allowed; "looks hard" rates the difficulty, which is not). What separates
+#    them is grammatical role, so match the constructions where the adjective is
+#    predicated of the task or the target rather than modifying the PC's action:
+#    a copular/perception verb ("looks tricky"), "the odds" as a subject, or an
+#    attributive "a hard man to read". Verified against the six legitimate
+#    phrasings that broke the lexicon — none of them match these.
+_DIFFICULTY_PREDICATION = re.compile(
+    r"\b(?:look|looks|looked|seem|seems|seemed|sound|sounds|sounded|"
+    r"feel|feels|felt)\s+(?:like\s+)?(?:a\s+)?"
+    r"(?:tricky|hard|tough|difficult|dicey|risky|rough|steep|easy|simple)\b|"
+    r"\bthe\s+odds\b|"
+    r"\ba\s+(?:hard|tough|tricky|difficult)\s+\w+\s+to\s+\w+\b",
+    re.I,
+)
+# 3. Outcome pre-judgment: the DM states how the roll will land before it's
+#    made.
+_OUTCOME_PREJUDGMENT = re.compile(
+    r"\b(?:isn'?t|aren'?t|wasn'?t)\s+going\s+to\s+\w+\b|"
+    r"\bwon'?t\s+work\b|"
+    r"\bno\s+way\s+(?:he|she|they|it|you)\b|"
+    r"\bgood\s+luck\s+with\b|"
+    r"\bif\s+you\s+can\s+even\b",
+    re.I,
+)
+# 4. Target-resistance framing: the DM pre-rates the opposition (how alert,
+#    guarded, or hard-to-fool the target is) rather than letting the roll
+#    decide it.
+_TARGET_RESISTANCE = re.compile(
+    r"\bguarded\b|\bwary\b|\bcareful\b|\bsharp(?:-eyed)?\b|\bsuspicious\b|"
+    r"\bnot\s+(?:stupid|foolish|gullible|slow|careless|easily\s+fooled)\b|"
+    r"\bhard\s+to\s+(?:read|fool|convince|persuade)\b|"
+    r"\bquick[- ]witted\b|\bon\s+(?:her|his|their|your)\s+guard\b|\bno\s+fool\b",
+    re.I,
+)
+_ODDS_HEDGE_CATEGORIES = (
+    ("negated-ease", _NEGATED_EASE),
+    ("difficulty predication", _DIFFICULTY_PREDICATION),
+    ("outcome pre-judgment", _OUTCOME_PREJUDGMENT),
+    ("target-resistance framing", _TARGET_RESISTANCE),
+)
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
+# Lead-in lookback is bounded to the current paragraph (never crosses a
+# blank-line break) and further capped to this many trailing characters, so
+# an odds-hedge several paragraphs up (an earlier, resolved beat) is never
+# in scope.
+LEAD_IN_CHAR_CAP = 300
+LEAD_IN_SENTENCES = 2
 _SKILL_PAREN = re.compile(r"\((?:%s)\)" % _SKILLS, re.I)
 _SOUND_CUE = re.compile(r"🔊 \*\*Cue:\*\* \*(.+?)\*")
 _MAP_CUE = re.compile(r"🗺 \*\*Map:\*\* \*(.+?)\*")
@@ -101,7 +186,67 @@ def check_dc_leak(text: str) -> list[dict]:
     return out
 
 
+def _roll_lead_in_window(text: str, request_start: int) -> str:
+    """The one-or-two-sentence lead-in immediately before a roll request.
+
+    Bounded to the current paragraph (never crosses a blank-line break), so
+    narration from an earlier, already-resolved beat is out of scope.
+    LEAD_IN_CHAR_CAP applies only when there is no paragraph break at all —
+    the two bounds are alternatives, not additive. Either way the result is
+    trimmed to the last LEAD_IN_SENTENCES sentences, which is the real bound.
+    """
+    before = text[:request_start]
+    para_break = before.rfind("\n\n")
+    window = before[para_break + 2:] if para_break != -1 else before[-LEAD_IN_CHAR_CAP:]
+    sentences = [s.strip() for s in _SENTENCE_SPLIT.split(window) if s.strip()]
+    return " ".join(sentences[-LEAD_IN_SENTENCES:])
+
+
+def _odds_hedge_category(lead_in: str) -> str | None:
+    """First odds/outcome-hedge category that matches, or None.
+
+    Checked in a fixed order (negated-ease, difficulty predication, outcome
+    pre-judgment, target-resistance framing); the first hit names the
+    category reported in the finding's `detail`.
+
+    Typographic apostrophes are folded to ASCII first. Three of the four
+    categories lean on contractions ("isn't", "won't", "doesn't"), so a U+2019
+    would silently disable most of the detector while "not exactly" kept
+    matching — a partial failure is harder to notice than a total one. Current
+    narration uses ASCII throughout (183 to 0 across a full session), so this
+    guards a latent gap rather than an observed one.
+    """
+    lead_in = lead_in.replace("’", "'")
+    for category, pattern in _ODDS_HEDGE_CATEGORIES:
+        if pattern.search(lead_in):
+            return category
+    return None
+
+
 def check_roll_not_final(text: str, roll_mode: str) -> list[dict]:
+    """Both halves of "the roll request ends the turn": lead-in hedging
+    before the request, and substantive narration after it.
+
+    The lead-in half matches the one-or-two-sentence window immediately
+    before the request against four hedge categories (see
+    _ODDS_HEDGE_CATEGORIES) selected for grammatical shape rather than
+    vocabulary, because the rule turns on grammatical role: "you push hard
+    against the door" describes the attempt and is allowed; "the door looks
+    hard to force" rates the difficulty and is not. Both contain "hard". An
+    earlier bare-lexicon version fired on 6 of 6 permitted phrasings.
+
+    Known blind spots, measured rather than assumed: violations carried by
+    implication rather than construction pass clean — "That's not the kind
+    of man who talks easily", "She's already got your measure", "This could
+    go sideways fast". Recall against arbitrary phrasing is poor and does
+    not improve by extending the lists; the signal is semantic, not lexical.
+    Read a clean result as "nothing matched", never as "the turn was clean".
+    SKILL.md:306 is wider than anything checkable here, and hand-review
+    remains the instrument of record for it.
+
+    Consequently this is NOT a blocking-mode candidate: it would pass most
+    real violations while occasionally stopping a legal turn.
+    """
     if roll_mode != "players":
         return []
     last = None
@@ -109,13 +254,21 @@ def check_roll_not_final(text: str, roll_mode: str) -> list[dict]:
         last = m
     if last is None:
         return []
+    out = []
+    lead_in = _roll_lead_in_window(text, last.start())
+    category = _odds_hedge_category(lead_in) if lead_in else None
+    if category:
+        out.append({"detector": "roll_not_final",
+                    "detail": f"lead-in narration implies the odds/outcome "
+                              f"before the roll request ({category})",
+                    "excerpt": _excerpt(lead_in)})
     trailing = text[last.end():]
     n_words = len(trailing.split())
-    if n_words <= ROLL_TAIL_ALLOWANCE:
-        return []
-    return [{"detector": "roll_not_final",
-             "detail": f"roll request followed by {n_words} words of narration",
-             "excerpt": _excerpt(text, last.start())}]
+    if n_words > ROLL_TAIL_ALLOWANCE:
+        out.append({"detector": "roll_not_final",
+                    "detail": f"roll request followed by {n_words} words of narration",
+                    "excerpt": _excerpt(text, last.start())})
+    return out
 
 
 def check_pc_auto_roll(text: str, roll_mode: str) -> list[dict]:
