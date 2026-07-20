@@ -1,6 +1,6 @@
 # D&D Skill — Command Procedures
 
-Full step-by-step procedures for all `/dm:dnd` slash commands. Load this file at `/dm:dnd load` or before executing any slash command.
+Full step-by-step procedures for all `/dm:dnd` slash commands. **Do not load this file whole**: at session start load `SKILL-commands-index.md` instead, and before executing any command Read that command's `## ` section here (Grep for the header, Read to the next `## ` header) — every invocation, never from memory. The index carries the full contract.
 
 > **Path note:** commands below use `${CLAUDE_SKILL_DIR}` for the skill directory. This file is read verbatim, so that token is **not** auto-expanded here — substitute the absolute skill-dir path (from `SKILL.md`) before running any command, or it will fail with a broken `/scripts/…` path.
 

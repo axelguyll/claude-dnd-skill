@@ -12,7 +12,8 @@ tools: Read, Write, Edit, Glob, Bash, AskUserQuestion
 > substituted to its real absolute path (you can see it resolved just above/throughout).
 > **Every helper script and bundled file is invoked through that path.**
 >
-> The two reference files you load next — `SKILL-scripts.md` and `SKILL-commands.md` —
+> The reference files you load next — `SKILL-scripts.md`, `SKILL-commands-index.md`,
+> and every `SKILL-commands.md` section you Read at command invocation —
 > are read via the Read tool, which returns them **verbatim**: the literal text
 > `${CLAUDE_SKILL_DIR}` will appear in them *un-expanded*. Whenever you run a command
 > from those files (or anywhere), **replace `${CLAUDE_SKILL_DIR}` with the absolute path
@@ -60,7 +61,7 @@ Then branch to the matching procedure in `SKILL-commands.md` (`/dm:dnd load`, `/
 **Skip the menu when the intent is already explicit.** If the player typed a subcommand (`/dm:dnd load`, `/dm:dnd new …`) or named a campaign (`/dm:dnd load the-iron-vault`, *"load my pirate campaign"*), go straight to that procedure — do not ask. The menu is for the empty/ambiguous case only; never make a player who already told you what they want pick it from a list.
 
 **Use `AskUserQuestion` (not a typed prompt) for these specific decision points** — they have small, well-defined option sets and benefit from the structured picker:
-- **Which campaign to load** — when `/dm:dnd load` is chosen without a name (or the name is ambiguous). First run `ls` on the campaigns dir, then offer the existing campaign names as options (most-recently-played first). With "Other" the player can type a name you didn't list.
+- **Which campaign to load** — when `/dm:dnd load` is chosen without a name (or the name is ambiguous). First run `paths.py list-campaigns` (already sorted most-recently-played first), then offer the campaign names as options in that order. With "Other" the player can type a name you didn't list.
 
 For free-form or open-ended input (a character concept, a campaign theme, a narrative choice mid-scene) keep using natural prose — `AskUserQuestion` is for **bounded** choices, not for everything. Don't interrogate the player with menus when a sentence will do.
 
@@ -185,7 +186,8 @@ skill, or a dev clone).
 ${CLAUDE_SKILL_DIR}/                 ← the skill dir (plugin: <plugin>/skills/dnd/)
   SKILL.md           ← core DM rules (this file)
   SKILL-scripts.md   ← all Python script syntax (load at session start)
-  SKILL-commands.md  ← all /dm:dnd command procedures (load at session start)
+  SKILL-commands-index.md ← command index (load at session start)
+  SKILL-commands.md  ← all /dm:dnd command procedures (Read per section, on invocation)
   scripts/           ← dice.py, combat.py, character.py, tracker.py, calendar.py, lookup.py
   data/              ← bundled 5e SRD dataset (dnd5e_srd.json — no download needed; sync via /dm:dnd data sync)
   templates/         ← blank character-sheet.md, state.md, world.md, npcs.md, session-log.md
@@ -406,4 +408,4 @@ The tutor hint always goes **last** in the response, after the narration's closi
 
 **Scripting and rolls:** Run scripts, rolls, and simple expansions immediately — no confirmation prompts. Only pause for genuinely consequential operations (e.g. deleting campaign data).
 
-**Reference modules:** For full script syntax, Read `${CLAUDE_SKILL_DIR}/SKILL-scripts.md`. For full command procedures, Read `${CLAUDE_SKILL_DIR}/SKILL-commands.md`. Load both at `/dm:dnd load`.
+**Reference modules:** For full script syntax, Read `${CLAUDE_SKILL_DIR}/SKILL-scripts.md` at `/dm:dnd load`. For commands, Read `${CLAUDE_SKILL_DIR}/SKILL-commands-index.md` at load — **not** the full `SKILL-commands.md` — then Read the invoked command's `## ` section from `SKILL-commands.md` at every command invocation (Grep the header, Read to the next `## `). Command procedures are never executed from memory or summary; the index restates this contract.
