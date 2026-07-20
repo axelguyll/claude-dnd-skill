@@ -19,6 +19,9 @@ work — it is a round-trip with extra steps.
 
 The hook is a no-op (exit 0, no output) when:
   - no campaign is active (no runtime marker — e.g. a non-D&D Claude session),
+  - the session doesn't own the campaign — bound to another session, or the
+    marker is unbound and this session's transcript shows no `/dm:dnd load`
+    of it (see transcript_loaded_campaign),
   - the active campaign has `autosave: off` in `state.md → ## Session Flags`.
 
 Stdin (Stop-hook JSON, when run as a hook):
@@ -34,6 +37,7 @@ import os
 import json
 import pathlib
 import argparse
+import re
 import shutil
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -105,6 +109,69 @@ def claim_session(marker_path=None, session_id: str | None = None) -> None:
         pass
 
 
+_LOAD_CMD = re.compile(r"/dm:dnd\s+load\b[ \t]*(\S+)?", re.I)
+
+
+def _user_text(obj) -> str:
+    """Text of a genuine user prompt; '' for anything else (assistant turns,
+    tool_result feedback)."""
+    if not isinstance(obj, dict) or obj.get("type") != "user":
+        return ""
+    content = (obj.get("message") or {}).get("content")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        if any(isinstance(b, dict) and b.get("type") == "tool_result"
+               for b in content):
+            return ""
+        return " ".join(b.get("text", "") for b in content
+                        if isinstance(b, dict) and b.get("type") == "text")
+    return ""
+
+
+def transcript_loaded_campaign(transcript_path, campaign: str) -> bool:
+    """Whether this session's transcript shows the user running `/dm:dnd load`
+    for `campaign`.
+
+    Claim-race guard: an unbound marker used to admit the first Stop hook from
+    *any* session, so a dev session's Stop landing between `/dm:dnd load` and
+    the play session's first turn-end claimed the campaign and silently killed
+    snapshot + lint for play. Only genuine user messages are scanned — a load
+    command quoted in assistant text or a tool_result is not an invocation. A
+    bare `/dm:dnd load` counts (picker flow carries no name argument); an
+    explicit argument must match the active campaign.
+
+    Residual risk, accepted: a dev session in which the user literally ran the
+    load command for this campaign is indistinguishable from play and can
+    still claim.
+    """
+    if not transcript_path or not campaign:
+        return False
+    try:
+        raw_lines = pathlib.Path(transcript_path).read_text(
+            encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return False
+    for raw in raw_lines:
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            obj = json.loads(raw)
+        except ValueError:
+            continue
+        text = _user_text(obj)
+        if not text:
+            continue
+        for m in _LOAD_CMD.finditer(text):
+            arg = m.group(1)
+            if arg is None:
+                return True
+            if arg.strip(".,;:!?\"'`*_").lower() == campaign.lower():
+                return True
+    return False
+
+
 def session_owns_campaign(marker_path=None, session_id: str | None = None) -> bool:
     """Whether this session may act on the active campaign.
 
@@ -162,9 +229,14 @@ def _section(text: str, header: str) -> str | None:
     return "\n".join(body)
 
 
-def _counter_path(session_id: str | None, campaign: str) -> "paths.pathlib.Path":
-    key = session_id or campaign or "default"
-    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in key)
+def _counter_path(campaign: str) -> "paths.pathlib.Path":
+    """Campaign-keyed always. The hook once keyed by session id while
+    --status (which never reads stdin) keyed by campaign, so the counter's
+    only consumer read a file the hook never wrote. Session binding already
+    guarantees one owning session per campaign, so the campaign key is
+    unambiguous."""
+    safe = "".join(c if c.isalnum() or c in "-_" else "_"
+                   for c in (campaign or "default"))
     return paths.runtime_dir() / f"autosave-counter-{safe}.json"
 
 
@@ -234,10 +306,9 @@ def main() -> int:
     campaign = args.campaign or active_campaign()
 
     if args.status:
-        sid = stdin_obj.get("session_id")
-        turns = _load_counter(_counter_path(sid, campaign or "")) if campaign else 0
+        turns = _load_counter(_counter_path(campaign)) if campaign else 0
         print(f"active_campaign: {campaign or '(none)'}")
-        print(f"turns_since_checkpoint: {turns}")
+        print(f"turn_counter: {turns}")
         return 0
 
     # Guard: nothing to do when no campaign is active (non-D&D session, etc.).
@@ -252,7 +323,15 @@ def main() -> int:
         session_id = stdin_obj.get("session_id")
         if not session_owns_campaign(session_id=session_id):
             return 0
-        claim_session(session_id=session_id)
+        if session_id and bound_session() is None:
+            # Unbound marker: claim only with transcript evidence that THIS
+            # session ran /dm:dnd load for the active campaign. A session
+            # without that evidence neither claims nor acts (claim race —
+            # see transcript_loaded_campaign).
+            if not transcript_loaded_campaign(
+                    stdin_obj.get("transcript_path"), campaign):
+                return 0
+            claim_session(session_id=session_id)
 
     # Log-only turn lint (wave 2 — solutions doc §5.1). Own opt-out flag
     # (`turn_lint: off`), independent of autosave; must never break the hook.
@@ -272,7 +351,7 @@ def main() -> int:
         return 0
 
     every_n = args.every if args.every is not None else _every_from_env()
-    counter_file = _counter_path(stdin_obj.get("session_id"), campaign)
+    counter_file = _counter_path(campaign)
     prev = _load_counter(counter_file)
     _save_counter(counter_file, count_turn(stdin_obj, prev, every_n), campaign)
     return 0

@@ -72,6 +72,35 @@ class CadenceNeverBlocksTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("active_campaign", result.stdout)
 
+    def test_status_sees_hook_counter(self):
+        """The count must round-trip through the real hook path.
+
+        The regression: the hook wrote a session-keyed counter file while
+        --status read a campaign-keyed one, so the counter's only consumer
+        always saw 0 whenever the harness supplied a session id.
+        """
+        runtime = self.root / ".runtime"
+        runtime.mkdir(exist_ok=True)
+        (runtime / "active-campaign.json").write_text(
+            json.dumps({"name": CAMPAIGN}), encoding="utf-8")
+        transcript = self.root / "play.jsonl"
+        transcript.write_text(
+            json.dumps({"type": "user",
+                        "message": {"role": "user",
+                                    "content": f"/dm:dnd load {CAMPAIGN}"}}) + "\n",
+            encoding="utf-8")
+        payload = json.dumps({"session_id": "play-1",
+                              "transcript_path": str(transcript),
+                              "hook_event_name": "Stop",
+                              "stop_hook_active": False})
+        for _ in range(3):
+            result = subprocess.run(
+                [sys.executable, str(HOOK)], input=payload,
+                capture_output=True, text=True, env=self.env, cwd=str(REPO))
+            self.assertEqual(result.returncode, 0, result.stderr)
+        status = self._run("--status")
+        self.assertIn("turn_counter: 3", status.stdout)
+
 
 class NoCheckpointInstructionTests(unittest.TestCase):
     """The instruction string that spawned the extra turn must be gone."""
