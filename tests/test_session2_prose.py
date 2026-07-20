@@ -1,8 +1,13 @@
-"""Guard tests for the two session-2 prose patches (2026-07-20).
+"""Guard tests for the session-2 prose patches (2026-07-20).
 
-Both close gaps found by hand during play that the turn lint scored 0.00/turn on:
-the PC knowledge boundary (narration naming things the character can't know) and
+Closes a gap found by hand during play that the turn lint scored 0.00/turn on:
 advantage/disadvantage settled before the roll rather than after the result.
+
+The PC knowledge boundary also shipped in session 2 and was guarded here. It was
+restructured the same day (Thornwake notes showed it covered only one of the two
+axes it appeared to cover), and its guards now live in tests/test_session3_prose.py
+— which asserts a superset: both axes, all four failure examples, and the same
+placement invariant.
 
     python3 -m unittest tests.test_session2_prose -v
 """
@@ -11,35 +16,6 @@ import unittest
 
 DND = pathlib.Path(__file__).resolve().parent.parent / "skills" / "dnd"
 SKILL = (DND / "SKILL.md").read_text(encoding="utf-8")
-
-
-class KnowledgeBoundaryTests(unittest.TestCase):
-    def test_rule_exists(self):
-        self.assertIn("Name only what the character could actually know", SKILL)
-
-    def test_states_the_describe_dont_name_default(self):
-        self.assertRegex(SKILL, r"describe(?:d)?,? not name(?:d)?")
-
-    def test_carries_both_real_failure_examples(self):
-        self.assertIn("the Warden's cloak is already rounding the corner", SKILL)
-        self.assertIn("the drift the ledger's been hinting at", SKILL)
-
-    def test_names_the_witnessed_or_told_test(self):
-        self.assertRegex(SKILL, r"witnessed on-screen or been told")
-
-    def test_allows_npcs_to_supply_knowledge_in_fiction(self):
-        """The rule must not forbid the world from telling the PC things."""
-        idx = SKILL.find("Name only what the character could actually know")
-        window = SKILL[idx:idx + 2600]
-        self.assertIn("say so out loud", window)
-
-    def test_sits_with_the_specificity_rule_it_bounds(self):
-        """Placement is load-bearing: 'commit to specifics' creates the pressure."""
-        spec = SKILL.find("Commit to specifics, not abstractions")
-        know = SKILL.find("Name only what the character could actually know")
-        self.assertNotEqual(spec, -1)
-        self.assertNotEqual(know, -1)
-        self.assertLess(spec, know, "knowledge rule must follow the specificity rule")
 
 
 class AdvantageBeforeRollTests(unittest.TestCase):
