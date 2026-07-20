@@ -507,9 +507,17 @@ Then update `## Faction Moves` in state.md: for each active faction, answer *"wh
 2. Also write `~/.claude/dnd/campaigns/<name>/session_tail.json` — the same beats as a JSON list of `{"text": "...", "_camp": "<name>"}` entries (structured companion for tooling; nothing in the live loop reads it).
 
 **Campaign-graph relationship-shift sweep (runs BEFORE log archival — the compression
-rule below assumes this session's edges are already in the graph):** scan this session's
-narration for relationship shifts that weren't captured live via `/dm:dnd graph add-edge`
-/ `close-edge`. Look for moments matching these patterns:
+rule below assumes this session's edges are already in the graph):**
+
+**Step 1 — deterministic pass first.** Run
+`python3 ${CLAUDE_SKILL_DIR}/scripts/campaign_graph.py extract --deterministic --last-session-only`
+and hold its proposals — the extractor covers clean subject-verb-object statements at
+~95% precision for zero cost.
+
+**Step 2 — hand scan covers only what the extractor missed.** Scan this session's
+narration for relationship shifts the deterministic pass did not propose (it trades
+recall for precision — implication, pronouns, and multi-clause shifts are yours). Look
+for moments matching these patterns:
 
 - New alliance, betrayal, or rivalry between named NPCs / factions ("Velkyn now serves the Pale Court")
 - An NPC moving into / out of a location ("Mira fled the Citadel for the Lowmarket")
@@ -517,7 +525,9 @@ narration for relationship shifts that weren't captured live via `/dm:dnd graph 
 - A character learning a secret ("the party now knows Velkyn was the spy")
 - A quest / thread ending or being blocked
 
-For each candidate, draft an `add-edge` or `close-edge` call. Then **present the batch to the DM as a numbered list** and ask: *"Apply all? [y / pick / skip]"*
+For each hand-scan candidate, draft an `add-edge` or `close-edge` call. Then **present
+one combined numbered list — the deterministic proposals followed by the hand-scan
+drafts, labeled which is which** — and ask: *"Apply all? [y / pick / skip]"*
 
 - `y` → run all proposed calls via `python3 ${CLAUDE_SKILL_DIR}/scripts/campaign_graph.py ...`
 - `pick` → DM names the numbers to apply (e.g. `1, 3, 5`); skip the rest
@@ -531,7 +541,14 @@ for this sweep.)
 If `graph.json` doesn't exist yet for this campaign, skip the sweep entirely (no proposal block) — graph isn't seeded.
 
 **Session log archival (run on every save after session count > 3):**
-session-log.md keeps only the **2 most recent full session entries**. Older entries move to `session-log-archive.md` (append, never delete). Before archiving each entry, extract a 3–5 bullet continuity summary and write it to `## Continuity Archive` in state.md. Format:
+session-log.md keeps only the **2 most recent full session entries**; older entries live in `session-log-archive.md` (append, never delete). Two steps, in this order:
+
+1. **Continuity summaries (model work):** for each entry about to be archived (every `## Session N` except the 2 newest), extract a 3–5 bullet continuity summary and write it to `## Continuity Archive` in state.md — do this **before** step 2 moves the text out of the live log.
+2. **File surgery (script work):** run
+   `python3 ${CLAUDE_SKILL_DIR}/scripts/session_log_archive.py --campaign <name>` —
+   it moves every entry but the 2 newest to the archive and reports which sessions it moved. Do not cut-and-paste entries by hand.
+
+Continuity summary format:
 
 ```markdown
 ### Session N — [date] — [one-line location/event label]
