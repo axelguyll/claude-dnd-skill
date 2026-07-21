@@ -23,6 +23,23 @@ Detectors (rule anchor in SKILL.md):
                   land in the log, the excerpt lets the reviewer judge)
   unknown_cue     sound/map cue handle not on the campaign's lists
                   ("never invent a cue" / "never invent a map")
+  first_use_gloss campaign proper noun first-used in narration without a
+                  same-sentence gloss ("naming and glossing are one act,
+                  not a name plus a tax" — SKILL.md). Inventory is drawn
+                  mechanically from the campaign's own world.md/npcs.md
+                  (build_name_inventory) — no AI-judgment step, deliberately
+                  (anti-pattern 10: a model that has read world.md already
+                  knows the jargon and cannot feel the player's confusion).
+                  First use is tracked per campaign in
+                  `<campaign>/.lint-seen-names.json`, written alongside the
+                  lint log — see check_first_use_gloss.
+  narration_band  session-opening narration over its heat band's word cap,
+                  or introducing more than three new names ("Length
+                  follows the scene's heat" — SKILL.md Standard 4). Fires
+                  ONLY on the session's first turn (is_first_turn) — heat
+                  is not mechanically decidable on any other turn, and the
+                  Breathe band is unbounded by design. See
+                  check_narration_band.
 
 Per-campaign opt-out: `turn_lint: off` in `state.md → ## Session Flags`.
 
@@ -44,6 +61,7 @@ import paths  # noqa: E402
 from render_assets import parse_asset_list  # noqa: E402
 
 LOG_NAME = ".lint-log.jsonl"
+SEEN_NAMES_LOG = ".lint-seen-names.json"
 EXCERPT_LEN = 160
 
 # Words of trailing narration tolerated after a roll request (allows a short
@@ -209,6 +227,72 @@ _MAP_CUE = re.compile(r"🗺 \*\*Map:\*\* \*(.+?)\*")
 # "theater of the mind" (the documented variant), but the literal phrase
 # itself must be present.
 _DOWN_CUE = re.compile(r"^down\s*[-—]\s*theater of the mind\b", re.I)
+
+# ── first_use_gloss support data ───────────────────────────────────────────
+# A maximal run of consecutive Title-Case words, joined by a single literal
+# space (not `\s`) so a run never crosses a newline — two capitalized words
+# on adjacent lines must not accidentally merge into one bogus phrase.
+# Apostrophes are deliberately excluded from the word class: "Vane's" and
+# "King's" tokenize as "Vane"/"King", which both strips possessives for free
+# and avoids inventory keys keyed on a raw possessive form.
+_TITLE_WORD = r"[A-Z][a-zA-Z]*"
+_TITLE_RUN = re.compile(r"%s(?:[ ]%s)*" % (_TITLE_WORD, _TITLE_WORD))
+
+# A single leading determiner/possessive is stripped from a candidate phrase
+# before it enters the inventory or is matched against it — this is the
+# mechanism (not a stopword lexicon on the narration side) that keeps
+# ordinary sentence-initial capitals ("The rain falls...") out of the
+# inventory: "The Grey King" reduces to "Grey King", but "The" alone reduces
+# to nothing and is discarded.
+_LEADING_DETERMINERS = frozenset({
+    "The", "A", "An", "This", "That", "These", "Those",
+    "His", "Her", "Their", "Its", "My", "Your", "Our",
+})
+# Common English words that are still capitalized when sentence-initial and
+# would otherwise cross the single-word frequency threshold in ordinary
+# campaign prose (a stopword list is a fixed, deterministic exclusion — not
+# a judgment call — so it stays mechanical per anti-pattern 10).
+_COMMON_CAPITALIZED_STOPWORDS = _LEADING_DETERMINERS | frozenset({
+    "He", "She", "They", "You", "We", "I", "It",
+    "But", "And", "So", "If", "When", "While", "Where", "What",
+    "Why", "How", "There", "Then", "Yes", "No", "Well", "Now",
+    "Not", "Or", "As", "At", "By", "For", "From", "In", "Of",
+    "On", "To", "With",
+})
+# Bold markdown field labels ("**Location:**", "**Notable abilities:**") and
+# markdown section headers are template scaffolding, not campaign prose —
+# stripped before candidate extraction so words like "Location" or "World
+# Foundations" never enter the inventory.
+_BOLD_LABEL = re.compile(r"\*\*[A-Za-z][A-Za-z /'\-]*?:\*\*")
+_HEADER_LINE = re.compile(r"(?m)^#{1,6}\s+.*$")
+# The three fixed per-NPC profile subsection headers (templates/npcs.md) —
+# excluded from the "### <Name>" structural-name pass.
+_NPC_SUBSECTION_HEADERS = frozenset({"personality", "relationships", "notes"})
+# The two mechanical gloss signals (design-fixed, deliberately not extended):
+# an indefinite-article noun phrase ("a sign reading...", "a grey-cloaked
+# officer") or explicit naming vocabulary ("called X", "known as X").
+_GLOSS_NAMING_VOCAB = re.compile(r"\b(?:called|named|known\s+as)\b", re.I)
+_GLOSS_INDEFINITE_NOUN = re.compile(r"\b(?:a|an)\s+([a-z]+)", re.I)
+# "a/an" immediately followed by one of these is almost always an idiom
+# ("without a word", "in a moment"), not the start of a descriptive
+# apposition — excluded so the indefinite-article signal doesn't fire on
+# every sentence containing ordinary filler and defeat the detector
+# entirely. A fixed, enumerated list, not a judgment call.
+_GLOSS_FILLER_NOUNS = frozenset({
+    "word", "moment", "bit", "while", "second", "chance", "beat", "breath",
+    "look", "glance", "step", "point", "sound", "sight", "thing", "little",
+    "few", "couple", "way", "turn",
+})
+
+
+def _has_gloss_signal(sentence: str) -> bool:
+    """Either mechanical gloss signal, present anywhere in `sentence`."""
+    if _GLOSS_NAMING_VOCAB.search(sentence):
+        return True
+    for m in _GLOSS_INDEFINITE_NOUN.finditer(sentence):
+        if m.group(1).lower() not in _GLOSS_FILLER_NOUNS:
+            return True
+    return False
 
 
 def _excerpt(text: str, start: int = 0) -> str:
@@ -385,9 +469,210 @@ def check_unknown_cue(text: str, ambient_handles: set[str],
     return out
 
 
+def _line_kind(line: str) -> str:
+    """Classify a line for first_use_gloss purposes: the canonical cue-block
+    lines (🔊/🗺) are exempt outright; NPC dialogue (blockquoted per
+    SKILL.md's `> **Name:** "..."` format) introduces a name without needing
+    a gloss (SKILL.md: "once an NPC says the name out loud, it's the
+    character's too"); everything else is ordinary narration."""
+    if _SOUND_CUE.search(line) or _MAP_CUE.search(line):
+        return "cue"
+    if line.lstrip().startswith(">"):
+        return "dialogue"
+    return "narration"
+
+
+def _sentence_window(text: str, start: int, end: int) -> str:
+    """The sentence containing text[start:end), bounded to the current
+    paragraph (mirrors _roll_lead_in_window's paragraph bound) — "the SAME
+    SENTENCE (or the immediately adjacent clause)" that a gloss must land
+    in. A dash- or comma-set-off appositive clause is still part of the same
+    sentence, so this covers both gloss-before-name and gloss-after-name
+    shapes without extra machinery (anti-pattern 1)."""
+    para_start = text.rfind("\n\n", 0, start)
+    para_start = 0 if para_start == -1 else para_start + 2
+    para_end = text.find("\n\n", end)
+    para_end = len(text) if para_end == -1 else para_end
+    para = text[para_start:para_end]
+    rel_start, rel_end = start - para_start, end - para_start
+    sent_start = 0
+    for m in re.finditer(r"[.!?]\s+", para):
+        if m.end() <= rel_start:
+            sent_start = m.end()
+        else:
+            break
+    sent_end = len(para)
+    for m in re.finditer(r"[.!?](?=\s|$)", para):
+        if m.start() >= rel_end:
+            sent_end = m.start() + 1
+            break
+    return para[sent_start:sent_end].strip()
+
+
+def _match_inventory(phrase: str, inventory: dict[str, str]):
+    """Longest contiguous sub-phrase of `phrase` (a maximal Title-Case run)
+    that matches the inventory, case-insensitively — tried longest-to-
+    shortest so "The Grey King" matches the inventory's "Grey King" rather
+    than missing entirely or matching a shorter accidental substring.
+    Returns (lowercase_key, canonical_display) or (None, None)."""
+    words = phrase.split(" ")
+    n = len(words)
+    for length in range(n, 0, -1):
+        for start in range(0, n - length + 1):
+            key = " ".join(words[start:start + length]).lower()
+            if key in inventory:
+                return key, inventory[key]
+    return None, None
+
+
+def check_first_use_gloss(text: str, inventory: dict[str, str],
+                          seen_names: set[str] | frozenset[str] = frozenset(),
+                          pc_names: set[str] | frozenset[str] = frozenset()
+                          ) -> tuple[list[dict], set[str]]:
+    """Every campaign name's first use in narration must be glossed in the
+    same breath (SKILL.md: "naming and glossing are one act, not a name plus
+    a tax"). Mechanical throughout — no AI-judgment step (anti-pattern 10):
+    `inventory` is pre-built by build_name_inventory from the campaign's own
+    world.md/npcs.md, and the two gloss signals (_GLOSS_SIGNAL) are fixed,
+    enumerated regexes, not a hedge lexicon that grows to fit fixtures.
+
+    Returns (findings, encountered) where `encountered` is every inventory
+    name matched in this turn (lowercase keys) — first use or not, dialogue
+    or narration — for the caller to fold into the per-campaign ledger
+    (`seen_names` is read-only here; the ledger write itself is the
+    caller's job, run_and_log/main). Empty inventory means the detector is
+    silently inert (no world.md/npcs.md to check against) and both return
+    values are empty — the caller records that distinctly from "checked and
+    clean" (see save_seen_names' has_inventory flag).
+
+    Exclusions: a name already in `seen_names` (or already claimed earlier
+    in this same turn) never re-fires — the rule fires once per name. A
+    name in `pc_names` is skipped outright (not even added to the ledger) —
+    PCs are never subject to this NPC/place/faction rule. Cue-block lines
+    (🔊/🗺) are not scanned. A name whose first occurrence in the turn falls
+    inside an NPC dialogue block (a line starting with `>`) is registered as
+    introduced but never gloss-checked — an NPC saying the name aloud is
+    itself the in-fiction introduction.
+    """
+    if not inventory:
+        return [], set()
+    findings: list[dict] = []
+    newly_seen: set[str] = set()
+    for m in _TITLE_RUN.finditer(text):
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        line_end = text.find("\n", m.end())
+        line_end = len(text) if line_end == -1 else line_end
+        kind = _line_kind(text[line_start:line_end])
+        if kind == "cue":
+            continue
+        key, canonical = _match_inventory(m.group(0), inventory)
+        if not key or key in pc_names:
+            continue
+        if key in seen_names or key in newly_seen:
+            continue
+        newly_seen.add(key)
+        if kind == "dialogue":
+            continue  # said aloud by an NPC — introduced, no gloss required
+        sentence = _sentence_window(text, m.start(), m.end())
+        if not (sentence and _has_gloss_signal(sentence)):
+            findings.append({
+                "detector": "first_use_gloss",
+                "detail": f"first use of campaign name {canonical!r} "
+                          f"without a gloss in the same sentence",
+                "excerpt": _excerpt(sentence) if sentence
+                           else _excerpt(text, m.start()),
+            })
+    return findings, newly_seen
+
+
+# ── narration_band support ─────────────────────────────────────────────────
+# SKILL.md Standard 4 ("Length follows the scene's heat"): Hot ~40-60 words
+# with at most one new name, Normal ~80-100 words with two or three new names
+# (three is the cap), Breathe unbounded. Heat/scene-transition is not
+# mechanically decidable from arbitrary mid-session text, and Breathe has no
+# upper bound, so a hard word-cap finding on an ordinary turn would false-fire
+# on a legitimate Breathe scene. This fires ONLY on the session-opening turn
+# (see is_first_turn) — the one place the arithmetic is unambiguous: a
+# session always opens hot or normal, never mid-Breathe.
+_NARRATION_BAND_TOLERANCE_DENOM = 20  # 5% — see check_narration_band's docstring
+
+
+def _narration_word_count(text: str) -> int:
+    """Narration words in `text`, excluding NPC dialogue/tutor lines
+    (blockquoted, `_line_kind` == "dialogue" — SKILL.md formats both
+    `> **Name:** "..."` and `> ◈ Tutor: ...` this way), cue-block lines
+    (`_line_kind` == "cue"), and resolved roll/mechanics lines (the bold
+    `**Roll:** … d20 … →` shape and the house `d20+N = M` shape — the same
+    two shapes check_pc_auto_roll already matches). A roll *request*
+    ("Make a Perception check") is left in — it's narration prose asking
+    for a roll, not the resolved mechanics themselves."""
+    words = 0
+    for line in text.splitlines():
+        if _line_kind(line) != "narration":
+            continue
+        if _RESOLVED_ROLL_LINE.search(line) or _RESOLVED_D20.search(line):
+            continue
+        words += len(line.split())
+    return words
+
+
+def check_narration_band(word_count: int, is_opening_turn: bool,
+                         new_name_count: int | None) -> list[dict]:
+    """Mechanized SKILL.md Standard 4, session-opening turn only.
+
+    `new_name_count` is the count of inventory names newly introduced this
+    turn (see check_first_use_gloss's `encountered` return) — None when no
+    campaign name inventory exists, in which case the name-count is unknown
+    and the most permissive cap (100, Normal) applies rather than silently
+    skipping the check.
+
+    Bands (SKILL.md): <=1 new name -> Hot, 60-word cap; 2-3 new names ->
+    Normal, 100-word cap; more than 3 -> its own finding ("three is the
+    cap" — SKILL.md's explicit ceiling on an opener's names), independent
+    of word count, since the prose defines no length band for that case at
+    all.
+
+    Tolerance: SKILL.md says "roughly" 40-60 / 80-100, so a small overage is
+    permitted — 5% of the cap (60 -> 63, 100 -> 105), not the 10% a first
+    read of "roughly" might suggest: 10% would not have caught the real
+    observed failure shape (a 109-word opener against the 100-word cap;
+    109 <= 110), so the tolerance was tightened until it did.
+    """
+    if not is_opening_turn:
+        return []
+    if new_name_count is not None and new_name_count > 3:
+        return [{
+            "detector": "narration_band",
+            "detail": f"session-opening turn introduces {new_name_count} "
+                      f"new names — three is the cap (SKILL.md Standard 4)",
+            "excerpt": "",
+        }]
+    if new_name_count is None:
+        cap, basis = 100, "no name inventory — most permissive cap applied"
+    elif new_name_count <= 1:
+        cap, basis = 60, f"{new_name_count} new name(s), Hot band"
+    else:
+        cap, basis = 100, f"{new_name_count} new names, Normal band"
+    threshold = cap + cap // _NARRATION_BAND_TOLERANCE_DENOM
+    if word_count > threshold:
+        return [{
+            "detector": "narration_band",
+            "detail": f"session-opening narration measured {word_count} "
+                      f"words against a {cap}-word cap ({basis}; 5% "
+                      f"tolerance applied)",
+            "excerpt": "",
+        }]
+    return []
+
+
 def lint_turn(text: str, flags: dict, ambient_handles: set[str],
               map_handles: set[str],
-              pc_names: set[str] | frozenset[str] = frozenset()) -> list[dict]:
+              pc_names: set[str] | frozenset[str] = frozenset(),
+              name_inventory: dict[str, str] | None = None,
+              seen_names: set[str] | frozenset[str] = frozenset(),
+              gloss_seen_out: set[str] | None = None,
+              is_opening_turn: bool = False,
+              narration_words_out: list[int] | None = None) -> list[dict]:
     roll_mode = flags.get("roll_mode", "players")
     findings = []
     # rote_closer disabled 2026-07-21: 75% false-positive rate (9/12) in
@@ -406,6 +691,21 @@ def lint_turn(text: str, flags: dict, ambient_handles: set[str],
     # Function and unit tests kept.
     # findings += check_pc_auto_roll(text, roll_mode, pc_names)
     findings += check_unknown_cue(text, ambient_handles, map_handles)
+    new_name_count = None
+    if name_inventory:
+        gloss_findings, encountered = check_first_use_gloss(
+            text, name_inventory, seen_names, pc_names)
+        findings += gloss_findings
+        if gloss_seen_out is not None:
+            gloss_seen_out.update(encountered)
+        new_name_count = len(encountered)
+    # Word count is measured every pass, opener or not — Task 2's
+    # proof-of-measurement for the health record (see run_and_log). Only
+    # the finding itself is gated on is_opening_turn.
+    word_count = _narration_word_count(text)
+    if narration_words_out is not None:
+        narration_words_out.append(word_count)
+    findings += check_narration_band(word_count, is_opening_turn, new_name_count)
     return findings
 
 
@@ -459,6 +759,163 @@ def campaign_pc_names(camp_dir: pathlib.Path) -> set[str]:
         except OSError:
             pass
     return names
+
+
+def _strip_structural_noise(text: str) -> str:
+    """Remove markdown scaffolding (bold field labels, section headers) that
+    would otherwise pollute the name inventory with template vocabulary
+    ("Location", "Notable abilities", "World Foundations") rather than the
+    campaign's own proper nouns."""
+    text = _BOLD_LABEL.sub(" ", text)
+    text = _HEADER_LINE.sub("", text)
+    return text
+
+
+def _npc_structural_names(npcs_text: str) -> set[str]:
+    """Explicit NPC names from the index table's Name column and the
+    `### <Name>` profile headers — structural ground truth, so no frequency
+    threshold applies (a single-mention NPC is still a real name)."""
+    names: set[str] = set()
+    for raw in npcs_text.splitlines():
+        line = raw.strip()
+        m = re.match(r"^###\s+(.+)$", line)
+        if m:
+            head = m.group(1).strip(" *")
+            if head and head.lower() not in _NPC_SUBSECTION_HEADERS:
+                names.add(head)
+            continue
+        if line.startswith("|") and line.endswith("|"):
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if not cells or not cells[0]:
+                continue
+            first = cells[0]
+            if first.lower() == "name" or set(first) <= set("-: "):
+                continue
+            names.add(first)
+    return names
+
+
+def _title_run_candidates(text: str) -> list[str]:
+    """Every maximal capitalized-word run in `text`, each reduced by
+    stripping a single leading determiner/possessive (see
+    _LEADING_DETERMINERS) — the mechanism that keeps "The Grey King" mapped
+    to "Grey King" and "The" alone discarded."""
+    out = []
+    for m in _TITLE_RUN.finditer(text):
+        words = m.group(0).split(" ")
+        if words[0] in _LEADING_DETERMINERS and len(words) > 1:
+            words = words[1:]
+        if words:
+            out.append(" ".join(words))
+    return out
+
+
+def build_name_inventory(camp_dir: pathlib.Path) -> dict[str, str]:
+    """Campaign name inventory for first_use_gloss: {lowercase phrase: the
+    canonical (first-seen) display form}, drawn from the campaign's own
+    world.md / npcs.md / npcs-full.md — never from AI judgment
+    (anti-pattern 10).
+
+    Two sources, combined:
+    - Structural (npcs.md, npcs-full.md): index-table Name column and
+      `### <Name>` profile headers — included unconditionally.
+    - Prose frequency (both files, bold labels and headers stripped first):
+      any capitalized *multi*-word phrase is included unconditionally (two
+      Title-Case words in a row is already a strong proper-noun signal); a
+      bare single capitalized word is included only if it recurs at least
+      twice across the source files and isn't a common English function
+      word (_COMMON_CAPITALIZED_STOPWORDS) — this is what filters out
+      incidental sentence-initial capitals mechanically, without needing
+      any judgment about what's "really" a name.
+
+    Returns {} when world.md and npcs.md are both absent/unreadable — the
+    detector goes silently inert in that case (see check_first_use_gloss
+    and save_seen_names' has_inventory flag).
+    """
+    structural: set[str] = set()
+    prose_parts: list[str] = []
+    found_any_file = False
+
+    world = camp_dir / "world.md"
+    if world.exists():
+        try:
+            prose_parts.append(world.read_text(encoding="utf-8", errors="replace"))
+            found_any_file = True
+        except OSError:
+            pass
+
+    for fname in ("npcs.md", "npcs-full.md"):
+        f = camp_dir / fname
+        if not f.exists():
+            continue
+        try:
+            raw = f.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        found_any_file = True
+        structural |= _npc_structural_names(raw)
+        prose_parts.append(raw)
+
+    if not found_any_file:
+        return {}
+
+    inventory: dict[str, str] = {}
+    for name in structural:
+        inventory.setdefault(name.lower(), name)
+
+    prose = _strip_structural_noise("\n\n".join(prose_parts))
+    single_word_counts: dict[str, int] = {}
+    for phrase in _title_run_candidates(prose):
+        words = phrase.split(" ")
+        if len(words) > 1:
+            inventory.setdefault(phrase.lower(), phrase)
+        else:
+            single_word_counts[phrase] = single_word_counts.get(phrase, 0) + 1
+
+    for word, count in single_word_counts.items():
+        if count >= 2 and word not in _COMMON_CAPITALIZED_STOPWORDS:
+            inventory.setdefault(word.lower(), word)
+
+    return inventory
+
+
+def load_seen_names(camp_dir: pathlib.Path) -> set[str]:
+    """Lowercased names already recorded as introduced, from the per-campaign
+    first_use_gloss ledger. Missing/corrupt ledger reads as empty — a fresh
+    campaign or a lint-log wiped between sessions must not be treated as
+    every name having already fired once (that would silently disable the
+    detector, not fail safe toward it)."""
+    f = camp_dir / SEEN_NAMES_LOG
+    if not f.exists():
+        return set()
+    try:
+        data = json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    seen = data.get("seen") if isinstance(data, dict) else None
+    if not isinstance(seen, list):
+        return set()
+    return {str(s).lower() for s in seen}
+
+
+def save_seen_names(camp_dir: pathlib.Path, seen: set[str],
+                    has_inventory: bool) -> None:
+    """Overwrite the per-campaign first-use ledger. `has_inventory` records
+    whether this run had a name inventory to check narration against at
+    all — so a reviewer reading the ledger can tell "no findings, inventory
+    present, narration was clean" apart from "no inventory — the detector
+    was inert this whole run" (the health/liveness distinction called for
+    in the design; `.lint-health.jsonl` itself is owned by
+    autosave_checkpoint.py, outside this script, so this ledger is the
+    in-scope place to carry it). Best-effort: must not raise when the
+    campaign dir is otherwise missing world.md/npcs.md."""
+    f = camp_dir / SEEN_NAMES_LOG
+    try:
+        f.write_text(
+            json.dumps({"seen": sorted(seen), "has_inventory": has_inventory}),
+            encoding="utf-8")
+    except OSError:
+        pass
 
 
 def asset_handles(camp_dir: pathlib.Path) -> tuple[set[str], set[str]]:
@@ -569,11 +1026,65 @@ def all_turns(transcript_path: str | pathlib.Path) -> list[str]:
     return turns
 
 
+def is_first_turn(transcript_path: str | pathlib.Path) -> bool:
+    """True when the turn just linted is the session's first — the anchor
+    check_narration_band's hard findings need (see its docstring for why
+    heat can't be decided from arbitrary text, but the opener always can).
+
+    Anchor chosen: turn-boundary count in the transcript itself, reusing
+    the same genuine-user-prompt test (_is_turn_boundary) all_turns already
+    uses, rather than "first lint of this session_id" read from
+    `.lint-health.jsonl`. That file is owned and appended-to by
+    autosave_checkpoint.py (a sibling script, elsewhere in the hook
+    pipeline) — coupling this detector's core arithmetic to it would make
+    the anchor only as reliable as that file's completeness (a gap,
+    rotation, or a session that never got a health record would silently
+    mis-anchor). The transcript is the actual session record and is
+    already what run_and_log/main are handed, so this needs no session_id
+    at all and works identically for the CLI (--transcript, --backfill)
+    and the hook path.
+
+    Cost stays bounded on long sessions: scanning stops the moment a
+    second boundary is found, so a turn deep into a session (long since
+    past two boundaries) returns False in the time it takes to reach the
+    second user message near the top of the file — not a re-read of the
+    whole transcript. A missing/unreadable transcript reads as False (not
+    the opening turn), the fail-safe direction: it costs a missed hard
+    finding, never a false one on a turn that isn't actually the opener.
+    """
+    try:
+        raw_lines = pathlib.Path(transcript_path).read_text(
+            encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return False
+    boundaries = 0
+    for raw in raw_lines:
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            obj = json.loads(raw)
+        except ValueError:
+            continue
+        if _is_turn_boundary(obj):
+            boundaries += 1
+            if boundaries >= 2:
+                return False
+    return True
+
+
 # ── Hook entry point ──────────────────────────────────────────────────────
 
-def run_and_log(stdin_obj: dict, campaign: str) -> int:
+def run_and_log(stdin_obj: dict, campaign: str,
+                health_out: dict | None = None) -> int:
     """Lint the turn in `transcript_path` and append findings to the campaign
-    log. Returns the number of findings. Never raises, never prints."""
+    log. Returns the number of findings. Never raises, never prints.
+
+    `health_out`, when given, is populated with `gloss_inventory` (bool) and
+    `narration_words` (int) once they're actually measured — left untouched
+    on any early return or exception, so the caller (autosave_checkpoint.py's
+    `.lint-health.jsonl` heartbeat) can tell "measured, value X" apart from
+    "never got far enough to measure" (anti-pattern 2)."""
     try:
         transcript = stdin_obj.get("transcript_path")
         if not transcript:
@@ -588,8 +1099,21 @@ def run_and_log(stdin_obj: dict, campaign: str) -> int:
         if not text.strip():
             return 0
         ambient, maps = asset_handles(camp_dir)
-        findings = lint_turn(text, flags, ambient, maps,
-                             campaign_pc_names(camp_dir))
+        pc_names = campaign_pc_names(camp_dir)
+        inventory = build_name_inventory(camp_dir)
+        seen_names = load_seen_names(camp_dir)
+        gloss_seen: set[str] = set()
+        narration_words: list[int] = []
+        is_opening = is_first_turn(transcript)
+        findings = lint_turn(text, flags, ambient, maps, pc_names,
+                             inventory, seen_names, gloss_seen,
+                             is_opening_turn=is_opening,
+                             narration_words_out=narration_words)
+        save_seen_names(camp_dir, seen_names | gloss_seen, bool(inventory))
+        if health_out is not None:
+            health_out["gloss_inventory"] = bool(inventory)
+            if narration_words:
+                health_out["narration_words"] = narration_words[0]
         if not findings:
             return 0
         ts = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
@@ -657,14 +1181,23 @@ def main() -> int:
         flags = session_flags(camp_dir)
         ambient, maps = asset_handles(camp_dir)
         pcs = campaign_pc_names(camp_dir)
+        inventory = build_name_inventory(camp_dir)
+        seen_names = load_seen_names(camp_dir)
         turns = all_turns(args.transcript)
         total = 0
         for i, text in enumerate(turns, 1):
-            findings = lint_turn(text, flags, ambient, maps, pcs)
+            gloss_seen: set[str] = set()
+            # Turn 1 of the (whole-session) backfill list is, by
+            # construction, the session's opening turn.
+            findings = lint_turn(text, flags, ambient, maps, pcs,
+                                 inventory, seen_names, gloss_seen,
+                                 is_opening_turn=(i == 1))
+            seen_names = seen_names | gloss_seen
             total += len(findings)
             for v in findings:
                 print(f"turn {i:>3}  {v['detector']}: {v['detail']}")
                 print(f"          {v['excerpt']}")
+        save_seen_names(camp_dir, seen_names, bool(inventory))
         rate = (total / len(turns)) if turns else 0.0
         print(f"\n{len(turns)} turns · {total} findings · {rate:.2f} per turn")
         return 0
@@ -674,8 +1207,14 @@ def main() -> int:
         print("(no assistant turn found in transcript)")
         return 0
     ambient, maps = asset_handles(camp_dir)
-    findings = lint_turn(text, session_flags(camp_dir), ambient, maps,
-                         campaign_pc_names(camp_dir))
+    pcs = campaign_pc_names(camp_dir)
+    inventory = build_name_inventory(camp_dir)
+    seen_names = load_seen_names(camp_dir)
+    gloss_seen: set[str] = set()
+    findings = lint_turn(text, session_flags(camp_dir), ambient, maps, pcs,
+                         inventory, seen_names, gloss_seen,
+                         is_opening_turn=is_first_turn(args.transcript))
+    save_seen_names(camp_dir, seen_names | gloss_seen, bool(inventory))
     if not findings:
         print("clean: no findings")
         return 0

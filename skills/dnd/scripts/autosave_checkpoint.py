@@ -365,12 +365,25 @@ def _run_lint(stdin_obj: dict, campaign: str) -> None:
     between-sessions reviewer can distinguish "no findings" from "lint never
     ran": silence in the health file means the hook itself didn't run.
     Best-effort throughout — no hook output, no exit-code changes.
+
+    Schema: {ts, session_id, event, findings, gloss_inventory, narration_words}.
+    The last two are additive (2026-07-21, narration_band): `gloss_inventory`
+    (bool) records whether the campaign had a name inventory this turn,
+    `narration_words` (int) the measured narration word count — proof the
+    measurement actually ran, not just that the hook did. Both are `None`
+    when `run_and_log` didn't get far enough to measure (import death, an
+    exception mid-body, or an early return like `turn_lint: off`) —
+    `None`/absent must stay distinguishable from a genuine zero, so nothing
+    here defaults them to 0 or False. Nothing in this repo reads this file
+    yet, so old records (missing these two keys) are simply records where
+    they're absent — no migration needed, additive-only.
     """
     raised = False
     findings = None
+    health: dict = {}
     try:
         import turn_lint
-        findings = turn_lint.run_and_log(stdin_obj, campaign)
+        findings = turn_lint.run_and_log(stdin_obj, campaign, health_out=health)
     except Exception:
         raised = True
     try:
@@ -381,7 +394,9 @@ def _run_lint(stdin_obj: dict, campaign: str) -> None:
             timespec="seconds")
         record = {"ts": ts, "session_id": stdin_obj.get("session_id"),
                   "event": "lint_raised" if raised else "lint_ok",
-                  "findings": findings}
+                  "findings": findings,
+                  "gloss_inventory": health.get("gloss_inventory"),
+                  "narration_words": health.get("narration_words")}
         with open(camp_dir / ".lint-health.jsonl", "a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")
     except Exception:
