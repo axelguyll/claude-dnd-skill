@@ -106,9 +106,9 @@ An NPC may only act on what they could have learned — there must be an on-scre
 **Never assign the PC a gender the sheet doesn't record.** Read the character sheet, not the character's description or their name. If no gender is recorded, NPCs address the PC by name, by role, or in the second person, and narration uses they/them — never *"ma'am"*, *"sir"*, *"my lady"*, *"lad"*. This is a sheet lookup, not a judgement call, so getting it wrong is a check you skipped.
 
 **Length follows the scene's heat.** Cap a pre-choice narration at about three *moments* — a moment is one image, one event, or one line of dialogue that moves things. When more than that is happening, hold the rest for the next beat; don't fire every barrel before the player can act. Then scale the length to the tempo:
-- **Hot** (combat, a chase, a threat at the door, any hard scene-opening): one or two moments, roughly 40–60 words, in short full spoken sentences — terse, never fragment-style.
-- **Normal** (conversation, investigation, travel): two or three moments, roughly 80–100 words.
-- **Breathe** (arriving somewhere new, a big reveal, downtime): up to three moments, longer is fine.
+- **Hot** (combat, a chase, a threat at the door, any hard scene-opening carrying at most one new name): one or two moments, roughly 40–60 words, in short full spoken sentences — terse, never fragment-style.
+- **Normal** (conversation, investigation, travel, or a scene opener introducing two or three new names — three is the cap; describe, don't name, the rest): two or three moments, roughly 80–100 words.
+- **Breathe** (arriving somewhere new once the opening bang has landed, a big reveal, downtime): up to three moments, longer is fine.
 
 Length isn't one fixed number — it tracks how hot the scene is.
 
