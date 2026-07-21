@@ -764,6 +764,9 @@ def cmd_extract_apply(args) -> int:
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser(prog="campaign_graph")
     sub = p.add_subparsers(dest="cmd", required=True)
 

@@ -193,6 +193,9 @@ def do_xp(args: list[str]):
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)

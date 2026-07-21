@@ -146,6 +146,9 @@ def cmd_migrate(campaign: str, ruleset: str, assume_yes: bool) -> int:
 
 
 def main(argv=None) -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("campaign", help="Campaign name (directory under campaigns root)")
     p.add_argument(

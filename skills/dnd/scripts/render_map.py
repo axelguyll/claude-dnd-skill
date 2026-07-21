@@ -115,6 +115,9 @@ def render_idle_html() -> str:
 
 
 def main(argv=None):
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser(description="Render the battle-map HTML.")
     p.add_argument("--campaign", required=True)
     p.add_argument("--handle")

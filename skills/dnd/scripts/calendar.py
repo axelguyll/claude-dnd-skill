@@ -288,6 +288,9 @@ def cmd_events(campaign: str) -> None:
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser(description="In-world date and time manager.")
     p.add_argument("-c", "--campaign", required=True, metavar="NAME")
     sub = p.add_subparsers(dest="cmd")

@@ -106,6 +106,9 @@ def run(notation: str, silent: bool = False, label: str = "", attack: bool = Fal
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     argv = sys.argv[1:]
     silent = "--silent" in argv
     attack = "--attack" in argv

@@ -299,6 +299,9 @@ def _build_entry(name: str, category: str) -> dict | None:
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Build/update dnd5e_supplemental.json")
     parser.add_argument("--campaign", metavar="NAME",
         help="Scan all characters in a campaign directory")

@@ -113,6 +113,9 @@ def _retire_standalone(yes: bool, dry_run: bool) -> int:
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(
         description="Migrate a v1 standalone D&D skill install to the v2 plugin.")
     ap.add_argument("--yes", action="store_true", help="auto-confirm destructive steps")

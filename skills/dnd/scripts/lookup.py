@@ -502,6 +502,9 @@ def _parse_value_flag(flags_with_args, name):
 
 
 def main() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     raw = sys.argv[1:]
 
     # Pull out value-bearing flags first so the positional parser doesn't see them

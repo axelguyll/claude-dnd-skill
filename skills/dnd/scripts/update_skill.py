@@ -127,6 +127,9 @@ def _is_newer(remote: str, local: str) -> bool:
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser()
     p.add_argument("--check", action="store_true", help="check only, do not pull")
     p.add_argument("--yes", action="store_true", help="pull without prompting")

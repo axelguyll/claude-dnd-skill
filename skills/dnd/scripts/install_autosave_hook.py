@@ -127,6 +127,9 @@ def uninstall(path: str) -> None:
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Install the autosave Stop hook.")
     parser.add_argument("--uninstall", action="store_true")
     parser.add_argument("--status", action="store_true")

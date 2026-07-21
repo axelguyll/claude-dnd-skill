@@ -497,6 +497,9 @@ def cmd_diff_files(args) -> int:
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser(prog="session_recap", description=__doc__.split("\n", 2)[1])
     sub = p.add_subparsers(dest="cmd", required=True)
 

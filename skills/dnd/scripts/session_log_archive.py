@@ -83,6 +83,9 @@ def archive_old_entries(camp_dir: pathlib.Path, keep: int = 2) -> list[int]:
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description="Archive old session-log entries.")
     ap.add_argument("--campaign", required=True)
     ap.add_argument("--keep", type=int, default=2,

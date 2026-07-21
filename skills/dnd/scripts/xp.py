@@ -341,6 +341,9 @@ def cmd_award(args: argparse.Namespace) -> None:
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 def main() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(
         description="XP calculation and award for D&D 5e encounters.",
         formatter_class=argparse.RawDescriptionHelpFormatter,

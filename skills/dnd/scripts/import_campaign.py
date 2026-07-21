@@ -234,6 +234,9 @@ def file_info(path: str, text: str) -> str:
 
 
 def main():
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Extract text from campaign source file.")
     parser.add_argument("filepath", help="Path to the source file")
     parser.add_argument("--info", action="store_true", help="Print file info only")

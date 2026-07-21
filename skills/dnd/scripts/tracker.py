@@ -39,6 +39,7 @@ Usage:
 import json
 import os
 import argparse
+import sys
 import time
 from datetime import datetime, timezone
 from paths import find_campaign as _find_campaign
@@ -378,6 +379,9 @@ def cmd_clear(campaign: str, clear_all: bool = False) -> None:
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser(description="Session condition/death-save tracker.")
     p.add_argument("-c", "--campaign", required=True, metavar="NAME",
                    help="Campaign name (matches ~/.claude/dnd/campaigns/<name>/)")

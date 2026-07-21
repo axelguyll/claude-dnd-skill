@@ -485,6 +485,9 @@ def rebuild_with_prose() -> dict:
 # ── CLI ───────────────────────────────────────────────────────────────────
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
 

@@ -79,6 +79,9 @@ def check(campaign: str) -> tuple[int, list]:
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Validate lazy-corpus layout.")
     parser.add_argument("--campaign", required=True)
     args = parser.parse_args()

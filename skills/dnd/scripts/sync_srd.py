@@ -51,6 +51,9 @@ def _stored_meta() -> dict:
 
 
 def main() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     args  = sys.argv[1:]
     check_only = "--check" in args
     force      = "--force" in args

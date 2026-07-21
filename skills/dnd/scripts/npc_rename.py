@@ -316,6 +316,9 @@ def _confirm(prompt: str) -> bool:
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--campaign", required=True)
     p.add_argument("--old", required=True, help="existing character name")
