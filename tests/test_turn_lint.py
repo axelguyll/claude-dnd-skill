@@ -474,6 +474,27 @@ class UnknownCueTests(unittest.TestCase):
         self.assertEqual(
             len(turn_lint.check_unknown_cue(text, self.AMBIENT, self.MAPS)), 1)
 
+    def test_down_prefixed_unknown_map_cue_flagged(self):
+        """Whitelist bug: `startswith("down")` exempted any handle starting
+        with those four letters, not just the genuine down-cue. A map named
+        `downfall-ruins` (not on map-list) must still be flagged."""
+        text = "🗺 **Map:** *downfall-ruins*"
+        self.assertEqual(
+            len(turn_lint.check_unknown_cue(text, self.AMBIENT, self.MAPS)), 1)
+
+    def test_down_prefixed_unknown_map_cue_flagged_second_handle(self):
+        text = "🗺 **Map:** *downtown-docks*"
+        self.assertEqual(
+            len(turn_lint.check_unknown_cue(text, self.AMBIENT, self.MAPS)), 1)
+
+    def test_map_down_cue_ascii_hyphen_allowed(self):
+        text = "🗺 **Map:** *down - theater of the mind*"
+        self.assertEqual(turn_lint.check_unknown_cue(text, self.AMBIENT, self.MAPS), [])
+
+    def test_map_down_cue_trailing_free_text_allowed(self):
+        text = "🗺 **Map:** *down — theater of the mind, back to the tavern*"
+        self.assertEqual(turn_lint.check_unknown_cue(text, self.AMBIENT, self.MAPS), [])
+
 
 def _jsonl(*objs) -> str:
     return "\n".join(json.dumps(o) for o in objs) + "\n"
@@ -553,11 +574,13 @@ class RunAndLogTests(unittest.TestCase):
                     del os.environ["DND_CAMPAIGN_ROOT"]
                 else:
                     os.environ["DND_CAMPAIGN_ROOT"] = old
-            self.assertEqual(n, 2)  # dc_leak + rote_closer
+            # rote_closer is disabled at the registry level (see lint_turn) —
+            # the "what do you do?" tail in this fixture no longer counts.
+            self.assertEqual(n, 1)  # dc_leak only
             log = (camp / turn_lint.LOG_NAME).read_text(encoding="utf-8")
             entries = [json.loads(line) for line in log.splitlines()]
             detectors = {e["detector"] for e in entries}
-            self.assertEqual(detectors, {"dc_leak", "rote_closer"})
+            self.assertEqual(detectors, {"dc_leak"})
 
     def test_body_crash_writes_lint_error_record(self):
         """A mid-body crash must be distinguishable from a clean turn in the

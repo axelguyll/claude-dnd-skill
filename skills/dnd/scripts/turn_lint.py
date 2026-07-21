@@ -201,6 +201,14 @@ LEAD_IN_SENTENCES = 2
 _SKILL_PAREN = re.compile(r"\((?:%s)\)" % _SKILLS, re.I)
 _SOUND_CUE = re.compile(r"🔊 \*\*Cue:\*\* \*(.+?)\*")
 _MAP_CUE = re.compile(r"🗺 \*\*Map:\*\* \*(.+?)\*")
+# The genuine down-cue (SKILL.md: "down — theater of the mind"), exempt from
+# map-list membership. Anchored at the start so a real map handle that merely
+# starts with "down" (downfall-ruins, downtown-docks) is NOT exempted —
+# `handle.lower().startswith("down")` used to swallow those. Tolerates an
+# ASCII hyphen in place of the em-dash, and allows trailing free text after
+# "theater of the mind" (the documented variant), but the literal phrase
+# itself must be present.
+_DOWN_CUE = re.compile(r"^down\s*[-—]\s*theater of the mind\b", re.I)
 
 
 def _excerpt(text: str, start: int = 0) -> str:
@@ -368,7 +376,7 @@ def check_unknown_cue(text: str, ambient_handles: set[str],
                         "excerpt": _excerpt(m.group(0))})
     for m in _MAP_CUE.finditer(text):
         handle = m.group(1).strip()
-        if handle.lower().startswith("down"):  # "down — theater of the mind"
+        if _DOWN_CUE.match(handle):
             continue
         if handle.lower() not in map_handles:
             out.append({"detector": "unknown_cue",
@@ -382,10 +390,21 @@ def lint_turn(text: str, flags: dict, ambient_handles: set[str],
               pc_names: set[str] | frozenset[str] = frozenset()) -> list[dict]:
     roll_mode = flags.get("roll_mode", "players")
     findings = []
-    findings += check_rote_closer(text)
+    # rote_closer disabled 2026-07-21: 75% false-positive rate (9/12) in
+    # empirical re-validation against freshly invented permitted prose — the
+    # regex is register-blind, so an NPC closing a scene with a direct
+    # question (a form SKILL.md recommends at a genuine decision point)
+    # trips it (validation report). Function and unit tests kept.
+    # findings += check_rote_closer(text)
     findings += check_dc_leak(text)
     findings += check_roll_not_final(text, roll_mode)
-    findings += check_pc_auto_roll(text, roll_mode, pc_names)
+    # pc_auto_roll disabled 2026-07-21: false-fired (3/12) in empirical
+    # re-validation, including an undocumented in-genre case — a house-format
+    # PC initiative line ("Kestrel -- Initiative: d20+2 = 14") fires it even
+    # though SKILL.md exempts initiative from roll_mode; the house-format
+    # branch lacks a `kind` filter to exclude it (validation report).
+    # Function and unit tests kept.
+    # findings += check_pc_auto_roll(text, roll_mode, pc_names)
     findings += check_unknown_cue(text, ambient_handles, map_handles)
     return findings
 
