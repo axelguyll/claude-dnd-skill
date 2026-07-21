@@ -548,14 +548,21 @@ def check_first_use_gloss(text: str, inventory: dict[str, str],
     Exclusions: a name already in `seen_names` (or already claimed earlier
     in this same turn) never re-fires — the rule fires once per name. A
     name in `pc_names` is skipped outright (not even added to the ledger) —
-    PCs are never subject to this NPC/place/faction rule. Cue-block lines
-    (🔊/🗺) are not scanned. A name whose first occurrence in the turn falls
-    inside an NPC dialogue block (a line starting with `>`) is registered as
-    introduced but never gloss-checked — an NPC saying the name aloud is
-    itself the in-fiction introduction.
+    PCs are never subject to this NPC/place/faction rule. So is a bare
+    single word matching one *token* of a PC's full name (`campaign_pc_names`
+    only returns full names, e.g. "talla vane", but narration naturally uses
+    the bare first name, "Talla") — this only exempts a single-token
+    inventory match ("talla"), never a multi-word one ("ash hollow" is not
+    exempted just because a PC is "Ash Meridan"), so an unrelated inventory
+    name that happens to share a PC's first/last name still counts normally.
+    Cue-block lines (🔊/🗺) are not scanned. A name whose first occurrence in
+    the turn falls inside an NPC dialogue block (a line starting with `>`)
+    is registered as introduced but never gloss-checked — an NPC saying the
+    name aloud is itself the in-fiction introduction.
     """
     if not inventory:
         return [], set()
+    pc_tokens = {tok for name in pc_names for tok in name.split()}
     findings: list[dict] = []
     newly_seen: set[str] = set()
     for m in _TITLE_RUN.finditer(text):
@@ -566,7 +573,7 @@ def check_first_use_gloss(text: str, inventory: dict[str, str],
         if kind == "cue":
             continue
         key, canonical = _match_inventory(m.group(0), inventory)
-        if not key or key in pc_names:
+        if not key or key in pc_names or (" " not in key and key in pc_tokens):
             continue
         if key in seen_names or key in newly_seen:
             continue

@@ -705,6 +705,31 @@ class FirstUseGlossExclusionTests(unittest.TestCase):
         self.assertEqual(out, [])
         self.assertEqual(seen, set())
 
+    def test_pc_bare_first_name_token_exempt(self):
+        # Bug: campaign_pc_names returns full names only ({"talla vane"}),
+        # but narration naturally uses the bare first name ("Talla's mug").
+        # 'talla' is a single-token inventory entry (prose-frequency source)
+        # and must be exempt as a PC token, not counted as a new campaign
+        # name.
+        inv = {"talla": "Talla"}
+        text = "Rowan reaches over to rattle Talla's mug."
+        out, seen = turn_lint.check_first_use_gloss(
+            text, inv, pc_names={"talla vane"})
+        self.assertEqual(out, [])
+        self.assertNotIn("talla", seen)
+
+    def test_pc_token_collision_does_not_exempt_unrelated_multiword_name(self):
+        # PC "Ash Meridan" contributes the token "ash" — but that must not
+        # exempt an unrelated multi-word inventory name that merely starts
+        # with the same word ("Ash Hollow", a location). Single-token key
+        # equality is exempt; a longer key containing that token is not.
+        inv = {"ash hollow": "Ash Hollow"}
+        text = "The road to Ash Hollow is washed out."
+        out, seen = turn_lint.check_first_use_gloss(
+            text, inv, pc_names={"ash meridan"})
+        self.assertEqual(len(out), 1)
+        self.assertIn("ash hollow", seen)
+
 
 class SeenNamesLedgerTests(unittest.TestCase):
     def test_round_trip(self):
