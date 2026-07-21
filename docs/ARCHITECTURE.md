@@ -36,9 +36,10 @@ prose docs are read verbatim, so every command copied from them needs manual sub
 
 | Doc | Lines | Governs | Loaded |
 |---|---|---|---|
-| `SKILL.md` | 362 | DM behavior contract: the 13 "Great DM" standards, narration principles, ruleset 2014/2024 handling, dice convention/`roll_mode`, arc-steering rules (structured + dynamic/authored), per-turn combat sequence, milestone leveling, tutor mode, compaction re-read ladder, autosave micro-save rule | Always (skill entry) |
+| `SKILL.md` | 376 | DM behavior contract: the 13 "Great DM" standards (collapsed to a compact core each, except the five active narration rules kept in full), narration principles, ruleset 2014/2024 handling, dice convention/`roll_mode`, arc-steering rules (structured + dynamic/authored), per-turn combat sequence, milestone leveling, tutor mode, compaction re-read ladder, autosave micro-save rule | Always (skill entry) |
 | `SKILL-commands.md` | 975 | Every `/dm:dnd` command as a step-by-step procedure: new, load, import, prep, beat complete, save, end, abandon, character *, level up, npc *, registry, combat, rest, recap, arc *, graph *, oracle *, tutor, autosave, data, path, update, list | At `/dm:dnd load` / before any command |
 | `SKILL-scripts.md` | 395 | Canonical CLI syntax for every helper script + when to run each | At `/dm:dnd load` |
+| `SKILL-narration.md` | 109 | Demoted rationale, worked examples, and failure catalogs behind the 13 standards and the Narration principles / Dice convention bullets — the detail trimmed out of SKILL.md to keep it short | At `/dm:dnd load` |
 
 **Overlaps (places where two docs state the same rule and can diverge):**
 - Dice/crit semantics: SKILL.md:281-297 and SKILL-scripts.md:10-27 (currently consistent).
