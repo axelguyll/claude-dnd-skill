@@ -12,6 +12,7 @@ DND = REPO / "skills" / "dnd"
 SKILL = (DND / "SKILL.md").read_text(encoding="utf-8")
 CMDS = (DND / "SKILL-commands.md").read_text(encoding="utf-8")
 SCRIPTS = (DND / "SKILL-scripts.md").read_text(encoding="utf-8")
+NARRATION = (DND / "SKILL-narration.md").read_text(encoding="utf-8")
 
 
 class SkillProseTests(unittest.TestCase):
@@ -117,7 +118,12 @@ class DMVoiceTests(unittest.TestCase):
         self.assertIn("Don't tag every turn with", SKILL)
 
     def test_g_phonetic_hint_for_invented_names(self):
-        self.assertIn("pronunciation hint the first time an invented name appears", SKILL)
+        # Demoted from SKILL.md to SKILL-narration.md in the 2026-07-21
+        # mechanization run (commit 3ca4893), where it's explicitly marked
+        # "dropped from the active list, not counted as a format contract" —
+        # a deliberate downgrade from mandatory to reference guidance, not a
+        # silent loss; the instruction text itself is unchanged.
+        self.assertIn("pronunciation hint the first time an invented name appears", NARRATION)
 
 
 class SolutionsWave1Tests(unittest.TestCase):
@@ -135,8 +141,12 @@ class SolutionsWave1Tests(unittest.TestCase):
         self.assertIn("Nearly Impossible 25", SKILL)
 
     def test_narration_mode_ladder(self):
+        # The clear/degraded/secondhand ladder stays active in SKILL.md; the
+        # "narrate only what the source contained" elaboration was demoted to
+        # SKILL-narration.md in the 2026-07-21 mechanization run (commit
+        # 3ca4893) — SKILL.md's bullet now just points there.
         self.assertIn("Match narration mode to the character's information state", SKILL)
-        self.assertIn("never smuggle the player's deduction", SKILL)
+        self.assertIn("never smuggle the player's deduction", NARRATION)
 
     def test_death_and_dying_protocol(self):
         self.assertIn("## Death & Dying", SKILL)
@@ -144,7 +154,11 @@ class SolutionsWave1Tests(unittest.TestCase):
         self.assertIn("The world remembers the dead", SKILL)
 
     def test_voice_worked_pair(self):
-        self.assertIn("page-prose vs. spoken", SKILL)
+        # Worked example demoted from SKILL.md to SKILL-narration.md in the
+        # 2026-07-21 mechanization run (commit 3ca4893); SKILL.md's Standard 4
+        # now just points there ("Worked example and rationale: Read
+        # SKILL-narration.md").
+        self.assertIn("page-prose vs. spoken", NARRATION)
 
     def test_prep_seeds_graph_silently(self):
         self.assertIn("Seed the campaign graph — silently, no approval prompt", CMDS)
@@ -176,8 +190,13 @@ class DMAuthenticityTests(unittest.TestCase):
         self.assertIn("Natural 1 and 20 are automatic only on attack rolls", SKILL)
 
     def test_rule4b_fail_forward_with_puzzle_carveout(self):
-        self.assertIn("A failed roll complicates", SKILL)
-        self.assertIn("does not apply to puzzles", SKILL)
+        # Full rule text demoted from SKILL.md to SKILL-narration.md in the
+        # 2026-07-21 mechanization run (commit 3ca4893); SKILL.md's Standard 7
+        # now just points there ("how failure complicates a scene: Read
+        # SKILL-narration.md"). The rule is still active guidance, just no
+        # longer force-loaded every turn.
+        self.assertIn("A failed roll complicates", NARRATION)
+        self.assertIn("does not apply to puzzles", NARRATION)
 
     def test_rule5_voice_conditions_and_name_dice(self):
         self.assertIn("Voice an active condition's mechanical effect and name the dice", SKILL)
