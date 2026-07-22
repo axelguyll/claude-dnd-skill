@@ -197,5 +197,140 @@ class LintHeartbeatTests(unittest.TestCase):
                           "no-such-campaign")  # find_campaign -> nonexistent
 
 
+class SessionClaimEvidenceTests(unittest.TestCase):
+    """Which user commands prove this session is the one playing the campaign.
+
+    `/dm:dnd load` was the only accepted evidence, so a session that CREATED a
+    campaign and played it straight away never claimed the unbound marker:
+    every Stop hook returned above `_run_lint` and `snapshot`, costing that
+    campaign both turn lint and automatic durability. Observed on
+    "the-long-ward" (created and played 2026-07-22); manual `/dm:dnd save`
+    still worked, which hid it.
+    """
+
+    CAMPAIGN = "the-long-ward"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.ac = _import("autosave_checkpoint", "autosave_checkpoint.py")
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def _transcript(self, *entries):
+        """Write a transcript; str entries are genuine user messages."""
+        path = pathlib.Path(self.tmp.name) / "session.jsonl"
+        lines = [
+            json.dumps({"type": "user",
+                        "message": {"role": "user", "content": e}})
+            if isinstance(e, str) else json.dumps(e)
+            for e in entries
+        ]
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return str(path)
+
+    @staticmethod
+    def _cmd(args):
+        """A real harness-encoded slash invocation, verbatim in transcript form."""
+        return ("<command-message>dm:dnd</command-message>\n"
+                "<command-name>/dm:dnd</command-name>\n"
+                f"<command-args>{args}</command-args>")
+
+    def _claims(self, *entries):
+        return self.ac.transcript_loaded_campaign(
+            self._transcript(*entries), self.CAMPAIGN)
+
+    # --- harness-encoded invocations (how real commands actually appear) ---
+
+    def test_harness_encoded_prep_claims(self):
+        self.assertTrue(self._claims(self._cmd("prep")))
+
+    def test_harness_encoded_load_claims(self):
+        """The old regex never matched this: `/dm:dnd` is followed by
+        `</command-name>`, so `/dm:dnd\\s+load` could not span the tags."""
+        self.assertTrue(self._claims(self._cmd("load the-long-ward")))
+
+    def test_harness_encoded_natural_language_create_claims(self):
+        """Args are free text, not a parsed subcommand — real sessions carry
+        'new campaign', 'start a new prep campaign', 'new campaign prep setup'."""
+        self.assertTrue(self._claims(self._cmd("start a new prep campaign")))
+
+    def test_harness_encoded_load_of_other_campaign_does_not_claim(self):
+        self.assertFalse(self._claims(self._cmd("load the-hollow-crown")))
+
+    def test_harness_encoded_save_does_not_claim(self):
+        self.assertFalse(self._claims(self._cmd("save campaign progress")))
+
+    def test_bare_dm_dnd_without_args_does_not_claim(self):
+        """`/dm:dnd` alone carries no verb — the intent is unknowable."""
+        self.assertFalse(self._claims(self._cmd("")))
+
+    # --- prose mentions are not invocations ---
+
+    def test_mid_sentence_prose_mention_does_not_claim(self):
+        self.assertFalse(self._claims(
+            "they never type load, they use /dm:dnd prep, /dm:dnd new, "
+            "or /dm:dnd import instead"))
+
+    def test_backtick_prose_mention_does_not_claim(self):
+        self.assertFalse(self._claims(
+            "the `/dm:dnd new` path skips leveling, see `/dm:dnd prep`"))
+
+    # --- create-family evidence (the bug) ---
+
+    def test_prep_claims(self):
+        self.assertTrue(self._claims("/dm:dnd prep the-long-ward"))
+
+    def test_prep_with_option_args_claims(self):
+        """prep's real signature takes key:value options, never the slug."""
+        self.assertTrue(self._claims('/dm:dnd prep premise:"a walled city"'))
+
+    def test_bare_prep_claims(self):
+        self.assertTrue(self._claims("/dm:dnd prep"))
+
+    def test_new_with_quoted_name_claims(self):
+        """`new` names the campaign, but the typed form need not be the slug."""
+        self.assertTrue(self._claims('/dm:dnd new "The Long Ward" grimdark'))
+
+    def test_import_claims_despite_filepath_argument(self):
+        """import's first argument is a file, not the campaign name."""
+        self.assertTrue(self._claims("/dm:dnd import ~/modules/ward.pdf"))
+
+    # --- load evidence (unchanged) ---
+
+    def test_bare_load_claims(self):
+        self.assertTrue(self._claims("/dm:dnd load"))
+
+    def test_load_of_named_campaign_claims(self):
+        self.assertTrue(self._claims("/dm:dnd load the-long-ward"))
+
+    def test_load_of_other_campaign_does_not_claim(self):
+        self.assertFalse(self._claims("/dm:dnd load some-other-camp"))
+
+    # --- everything else stays out ---
+
+    def test_unrelated_session_does_not_claim(self):
+        self.assertFalse(self._claims(
+            "fix the autosave hook", "run the tests again"))
+
+    def test_prep_quoted_in_assistant_text_does_not_claim(self):
+        self.assertFalse(self._claims(
+            {"type": "assistant",
+             "message": {"role": "assistant",
+                         "content": [{"type": "text",
+                                      "text": "Run /dm:dnd prep to begin."}]}}))
+
+    def test_prep_inside_tool_result_does_not_claim(self):
+        self.assertFalse(self._claims(
+            {"type": "user",
+             "message": {"role": "user",
+                         "content": [{"type": "tool_result",
+                                      "content": "/dm:dnd prep the-long-ward"}]}}))
+
+    def test_unrelated_subcommand_does_not_claim(self):
+        self.assertFalse(self._claims("/dm:dnd list", "/dm:dnd roll 1d20"))
+
+
 if __name__ == "__main__":
     unittest.main()

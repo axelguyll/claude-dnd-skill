@@ -20,8 +20,8 @@ work — it is a round-trip with extra steps.
 The hook is a no-op (exit 0, no output) when:
   - no campaign is active (no runtime marker — e.g. a non-D&D Claude session),
   - the session doesn't own the campaign — bound to another session, or the
-    marker is unbound and this session's transcript shows no `/dm:dnd load`
-    of it (see transcript_loaded_campaign),
+    marker is unbound and this session's transcript shows no `/dm:dnd load`,
+    `prep`, `new`, or `import` of it (see transcript_loaded_campaign),
   - the active campaign has `autosave: off` in `state.md → ## Session Flags`.
 
 Stdin (Stop-hook JSON, when run as a hook):
@@ -110,7 +110,49 @@ def claim_session(marker_path=None, session_id: str | None = None) -> None:
         pass
 
 
-_LOAD_CMD = re.compile(r"/dm:dnd\s+load\b[ \t]*(\S+)?", re.I)
+# A real slash command reaches the transcript harness-encoded: the verb lives
+# in <command-args> and `/dm:dnd` is closed by </command-name>, so the old
+# `/dm:dnd\s+load` pattern could never span the two and matched no genuine
+# invocation at all — only prose that happened to spell the command out.
+_CMD_TAG = re.compile(
+    r"<command-name>\s*/dm:dnd\s*</command-name>\s*"
+    r"(?:<command-args>(.*?)</command-args>)?", re.S | re.I)
+
+# The same command typed inline. Anchored to the start of a line: a
+# mid-sentence or backticked mention is discussion, not an invocation.
+_CMD_INLINE = re.compile(
+    r"(?m)^[ \t>]*/dm:dnd\s+(load|prep|new|import)\b[ \t]*(\S+)?", re.I)
+
+# The create family is evidence on its own, argument unchecked: `prep` takes
+# key:value options and names the campaign during the interview, `import`
+# takes a filepath first, and `new`'s typed name need not be the eventual
+# slug. `load` alone carries the campaign name, so its argument is matched.
+_CREATE_CMDS = {"prep", "new", "import"}
+_CLAIM_VERBS = _CREATE_CMDS | {"load"}
+
+
+def _claim_verdict(verb: str, arg, campaign: str) -> bool:
+    """Whether `verb arg` names this campaign well enough to claim it."""
+    if verb in _CREATE_CMDS:
+        return True
+    return not arg or arg.strip(".,;:!?\"'`*_").lower() == campaign.lower()
+
+
+def _args_verdict(args: str, campaign: str) -> bool:
+    """Judge a free-text <command-args> body by its first recognised verb.
+
+    Args are whatever the user typed after `/dm:dnd`, not a parsed subcommand —
+    real sessions carry "new campaign", "start a new prep campaign",
+    "load the-hollow-crown". The first verb wins outright so a later word
+    cannot rescue a load of somebody else's campaign.
+    """
+    tokens = args.split()
+    for i, token in enumerate(tokens):
+        verb = token.strip(".,;:!?\"'`*_").lower()
+        if verb in _CLAIM_VERBS:
+            nxt = tokens[i + 1] if i + 1 < len(tokens) else None
+            return _claim_verdict(verb, nxt, campaign)
+    return False
 
 
 def _user_text(obj) -> str:
@@ -131,20 +173,27 @@ def _user_text(obj) -> str:
 
 
 def transcript_loaded_campaign(transcript_path, campaign: str) -> bool:
-    """Whether this session's transcript shows the user running `/dm:dnd load`
-    for `campaign`.
+    """Whether this session's transcript shows the user opening or creating
+    `campaign` — `/dm:dnd load`, `prep`, `new`, or `import`.
 
     Claim-race guard: an unbound marker used to admit the first Stop hook from
     *any* session, so a dev session's Stop landing between `/dm:dnd load` and
     the play session's first turn-end claimed the campaign and silently killed
-    snapshot + lint for play. Only genuine user messages are scanned — a load
+    snapshot + lint for play. Only genuine user messages are scanned — a
     command quoted in assistant text or a tool_result is not an invocation. A
     bare `/dm:dnd load` counts (picker flow carries no name argument); an
-    explicit argument must match the active campaign.
+    explicit load argument must match the active campaign.
 
-    Residual risk, accepted: a dev session in which the user literally ran the
-    load command for this campaign is indistinguishable from play and can
-    still claim.
+    `load` was once the only accepted evidence, which broke the commonest
+    first session of all: create a campaign, then play it. Those users never
+    type `load`, so the marker stayed unbound, every Stop hook returned early,
+    and the campaign silently lost both turn lint and autosave snapshots
+    (the-long-ward, 2026-07-22). The create family therefore counts too, with
+    its argument unchecked — see `_CREATE_CMDS`.
+
+    Residual risk, accepted: a dev session in which the user literally ran one
+    of these commands is indistinguishable from play and can still claim.
+    Widening from `load` to the create family widens that window slightly.
     """
     if not transcript_path or not campaign:
         return False
@@ -164,11 +213,11 @@ def transcript_loaded_campaign(transcript_path, campaign: str) -> bool:
         text = _user_text(obj)
         if not text:
             continue
-        for m in _LOAD_CMD.finditer(text):
-            arg = m.group(1)
-            if arg is None:
+        for m in _CMD_TAG.finditer(text):
+            if _args_verdict(m.group(1) or "", campaign):
                 return True
-            if arg.strip(".,;:!?\"'`*_").lower() == campaign.lower():
+        for m in _CMD_INLINE.finditer(text):
+            if _claim_verdict(m.group(1).lower(), m.group(2), campaign):
                 return True
     return False
 
@@ -326,9 +375,9 @@ def main() -> int:
             return 0
         if session_id and bound_session() is None:
             # Unbound marker: claim only with transcript evidence that THIS
-            # session ran /dm:dnd load for the active campaign. A session
-            # without that evidence neither claims nor acts (claim race —
-            # see transcript_loaded_campaign).
+            # session opened or created the active campaign (load / prep /
+            # new / import). A session without that evidence neither claims
+            # nor acts (claim race — see transcript_loaded_campaign).
             if not transcript_loaded_campaign(
                     stdin_obj.get("transcript_path"), campaign):
                 return 0
